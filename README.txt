@@ -1,20 +1,25 @@
-BISHAL MEDICINE POINT WEBSITE — VERSION 3
+BISHAL MEDICINE POINT WEBSITE — VERSION 4 (DESIGN UPDATE)
 
-আপনার দেওয়া যোগাযোগের তথ্য:
-- ফোন: 01816367262
-- ঠিকানা: Hospital Road, Maijdee, Noakhali
-- ইমেইল: bishalmedicinepoint@gmail.com
+Included:
+- Updated responsive design for desktop and mobile
+- Refined typography, spacing, product cards, and navigation
+- Phone and WhatsApp contact buttons
+- Search and category filter retained
+- Basic SEO metadata
 
-চালানোর নিয়ম:
-1. ZIP ফাইলটি ডাউনলোড করে Extract All করুন।
-2. ফোল্ডারের index.html ফাইলে ডাবল-ক্লিক করুন।
-3. Google Chrome-এ ওয়েবসাইট খুলবে।
-4. পণ্য খোঁজার সার্চ বক্স ও ক্যাটাগরি ফিল্টার ব্যবহার করতে পারবেন।
+HOW TO PREVIEW:
+1. Extract the ZIP file.
+2. Open index.html in Google Chrome.
 
-দামের ব্যাপারে জরুরি:
-- ওয়েবসাইটে দেখানো দামগুলো শুধু নমুনা/ডেমো, দোকানের নিশ্চিত দাম নয়।
-- প্রকাশ বা বিক্রির আগে প্রতিটি পণ্যের প্রকৃত দাম ও প্রাপ্যতা যাচাই করুন।
-- দাম বদলাতে index.html Notepad বা VS Code-এ খুলুন, Ctrl+F দিয়ে পণ্যের নাম খুঁজুন, তারপর সংশ্লিষ্ট <span class="price">...</span> অংশটি সম্পাদনা করুন।
-- Ctrl+S দিয়ে সেভ করে Chrome রিফ্রেশ করুন।
+HOW TO UPDATE THE LIVE GITHUB WEBSITE:
+1. Open your GitHub repository: https://github.com/BishalMedicinePoint/Bishal-Medicin-Point
+2. Open the Code tab.
+3. Click Add file > Upload files.
+4. Upload the new index.html from this ZIP (replace the old file when prompted).
+5. Click Commit changes.
+6. Wait a few minutes, then refresh the live website.
 
-এই সাইট এখনো অনলাইন অর্ডার, পেমেন্ট বা স্টক সংরক্ষণ করে না।
+IMPORTANT:
+- Product prices currently shown are sample prices. Replace them with verified shop prices before customers rely on them.
+- This static website does not accept online orders or payments and does not manage stock.
+- Contact information is based on details supplied by the shop owner.
