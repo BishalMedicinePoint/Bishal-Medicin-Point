@@ -200,3 +200,14 @@ Implement all 30 modules requested by the owner. Preserve the current public med
 - **Print / Reprint Receipt:** allow receipt preview, print, and reprint from invoice history. Reprints must retain the same invoice number and show a clear reprint indicator/time; reprinting must never create a new sale, payment, or stock movement.
 - Invoice history must show original invoice, edits/revisions, linked returns, refunds/credits, and receipt reprints in chronological order.
 - Enforce separate permissions for invoice edit, sales return approval, refund/credit posting, and receipt printing/reprinting. All financial and stock effects must be atomic, auditable, and tested before production deployment.
+
+## Customer due payment / collection — confirmed requirement
+
+- Add a **Due Payment / Collect Due** action on the customer profile, customer due list, and linked invoice details.
+- Show customer-wise total outstanding due, invoice-wise due, previous due, payments received, returns/credits, and current balance with a clear ledger.
+- Support full and partial due payments; one payment may be allocated to one invoice or split across selected outstanding invoices. Validate that allocated amounts do not exceed the outstanding balance unless an authorized advance-payment workflow is used.
+- Capture payment date/time, amount, payment method (cash, bank, mobile financial service, card, or other configured method), transaction/reference number where applicable, receiving employee, and notes.
+- Generate a payment receipt that can be printed and reprinted. Reprinting must not post another payment.
+- Update invoice due and customer balance immediately and transactionally; keep the original sale and all payment entries in an immutable ledger. Never erase or silently overwrite a payment; corrections require an authorized reversal/adjustment with reason and audit history.
+- Provide date-wise and customer-wise due collection reports, outstanding due ageing, payment-method summaries, and export/print where permissions allow.
+- Enforce separate permissions for viewing due, collecting payment, allocating payment, reversing/adjusting payment, and printing receipts. Restrict all customer financial data through database/server authorization and test partial payments, overpayments, duplicate submissions, reversals, and concurrent collections before production.
