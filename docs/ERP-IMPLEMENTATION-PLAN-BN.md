@@ -90,3 +90,13 @@ Implement all 30 modules requested by the owner. Preserve the current public med
 - Test with separate Super Admin, Manager, Pharmacist, Sales Staff, Accountant, and restricted employee accounts.
 - Test unauthorized reads/writes, branch isolation, stock race conditions, returns, photo upload limits/file types, storage access, scheduled backup completion, backup integrity, and restore on a test environment before production.
 - Do not apply SQL migrations to production until reviewed and explicitly approved.
+
+## MedEx catalogue integration (pending authorization)
+
+- Add a dedicated MedEx Integration / Sync screen in the ERP for connection status, last successful sync, sync history, and error reporting.
+- Design an import adapter that can use an official MedEx API or a data feed/API supplied under written permission. Do not scrape, bulk-copy, or redistribute MedEx content unless MedEx authorizes that use.
+- Sync permitted catalogue fields (for example brand name, generic, strength, dosage form, and manufacturer) into a separate external-catalogue mapping layer; retain source identifiers and sync timestamps.
+- Match existing medicines carefully and flag uncertain matches for review; do not create duplicates or silently overwrite shop-specific fields.
+- Catalogue sync must NOT increase shop stock. Stock changes only through a verified purchase/stock-receipt transaction entered by an authorized employee.
+- Do not treat catalogue prices as the shop's purchase cost or selling price. Shop prices, batches, expiry, and on-hand quantity remain controlled by the shop.
+- Current integration status: not connected. Public research did not establish an official/licensed MedEx API or permission for automated bulk reuse. Enable live sync only after the data provider confirms an authorized integration method and terms.
