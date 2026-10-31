@@ -345,7 +345,7 @@ async function loadPaymentAccountOptions(){
  const {data,error}=await db.from("erp_accounts").select("id,account_name,account_type").eq("is_active",true).order("account_name");
  if(error){say($("customerPaymentStatus"),"Account list load হয়নি: "+error.message,true);say($("supplierPaymentStatus"),"Account list load হয়নি: "+error.message,true);return;}
  const options='<option value="">Account নির্বাচন করুন</option>'+(data||[]).map(a=>'<option value="'+safe(a.id)+'">'+safe(a.account_name)+' · '+safe(a.account_type)+'</option>').join("");
- ["customerPaymentAccount","supplierPaymentAccount","posPaymentAccount","purchasePaymentAccount","salesReturnAccount","payrollAccount"].forEach(id=>{const el=$(id);if(el){const old=el.value;el.innerHTML=options;el.value=old;}});
+ ["customerPaymentAccount","supplierPaymentAccount","posPaymentAccount","purchasePaymentAccount","salesReturnAccount","payrollAccount","purchaseReturnRefundAccount"].forEach(id=>{const el=$(id);if(el){const old=el.value;el.innerHTML=options;el.value=old;}});
 }
 async function loadCustomerDue(){
  const [inv,pay]=await Promise.all([
@@ -466,12 +466,12 @@ $("submitPurchaseReturnBtn").onclick=async()=>{
  const item=purchaseReturnOptions.find(x=>x.id===value("purchaseReturnItem"));
  const qty=Math.floor(Number(value("purchaseReturnQty"))||0),reason=value("purchaseReturnReason").trim();
  if(!activeUser||activeUser.id!==ADMIN_UID||!item||qty<1||qty>item.remaining||qty>item.available||!reason){say($("purchaseReturnStatus"),"Purchase item, Available Quantity ও Return Reason সঠিকভাবে দিন।",true);return;}
- if(!confirm("Supplier-কে Purchase Return করবেন? Qty: "+qty+" · Value ৳ "+purMoney(qty*Number(item.purchase_price))+" · Stock কমবে এবং বকেয়া সমন্বয় হবে।"))return;
+ const refundAccount=value("purchaseReturnRefundAccount")||null;\n if(!confirm("Supplier-কে Purchase Return করবেন? Qty: "+qty+" · Value ৳ "+purMoney(qty*Number(item.purchase_price))+" · Stock কমবে; প্রয়োজন হলে supplier refund account-এ যোগ হবে।"))return;
  $("submitPurchaseReturnBtn").disabled=true;
- const {data,error}=await db.rpc("bmp_create_purchase_return",{p_purchase_item_id:item.id,p_quantity:qty,p_reason:reason});
+ const {data,error}=await db.rpc("bmp_create_purchase_return",{p_purchase_item_id:item.id,p_quantity:qty,p_reason:reason,p_refund_account_id:refundAccount});
  $("submitPurchaseReturnBtn").disabled=false;
  if(error){say($("purchaseReturnStatus"),"Return হয়নি: "+error.message,true);return;}
- say($("purchaseReturnStatus"),"Purchase Return সফল: "+data.return_number+" · ৳ "+purMoney(data.return_total)+" · নতুন Due ৳ "+purMoney(data.purchase_due));
+ say($("purchaseReturnStatus"),"Purchase Return সফল: "+data.return_number+" · ৳ "+purMoney(data.return_total)+" · Supplier Refund ৳ "+purMoney(data.supplier_refund||0)+" · নতুন Due ৳ "+purMoney(data.purchase_due));
  $("purchaseReturnQty").value="1";$("purchaseReturnReason").value="";
  await loadPurchaseReturns();
 };
