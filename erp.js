@@ -377,6 +377,59 @@ $("customerDueTab").onclick=async()=>{
 
 
 
+
+let employees=[];
+function resetEmployeeForm(){
+ $("employeeForm").reset();$("employeeRecordId").value="";$("employeeCode").value="";
+ $("employeeJoiningDate").value=today();$("employeeEmploymentStatus").value="active";
+ $("employeeFormTitle").textContent="Add Employee";
+}
+function openEmployeeForm(row=null){
+ resetEmployeeForm();$("employeeFormPanel").hidden=false;
+ if(row){
+  $("employeeFormTitle").textContent="Edit Employee";$("employeeRecordId").value=row.id;$("employeeCode").value=row.employee_code;
+  const map={employeeName:"full_name",employeeMobile:"mobile_number",employeeAltPhone:"alternative_phone",employeeEmail:"email",employeeJobTitle:"job_title",employeeDepartment:"department",employeeAddress:"address",employeeEmergencyName:"emergency_contact_name",employeeEmergencyPhone:"emergency_contact_phone",employeeJoiningDate:"joining_date",employeeEmploymentStatus:"employment_status",employeeNotes:"notes"};
+  Object.entries(map).forEach(([id,key])=>$(id).value=row[key]??"");
+ }
+ $("employeeFormPanel").scrollIntoView({behavior:"smooth",block:"start"});
+}
+async function loadEmployees(){
+ $("employeeRows").innerHTML='<tr><td colspan="8">তথ্য লোড হচ্ছে...</td></tr>';
+ let q=db.from("erp_employees").select("*").order("created_at",{ascending:false});
+ const status=value("employeeStatusFilter");
+ if(status!=="all")q=q.eq("employment_status",status);
+ const {data,error}=await q;
+ if(error){$("employeeRows").innerHTML='<tr><td colspan="8">Employee list load হয়নি।</td></tr>';say($("employeeStatusText"),"Employee list load হয়নি: "+error.message,true);return;}
+ employees=data||[];renderEmployees();
+}
+function renderEmployees(){
+ const term=value("employeeSearch").toLowerCase();
+ const rows=employees.filter(e=>[e.employee_code,e.full_name,e.mobile_number,e.job_title,e.department].some(v=>String(v||"").toLowerCase().includes(term)));
+ if(!rows.length){$("employeeRows").innerHTML='<tr><td colspan="8">কোনো Employee পাওয়া যায়নি।</td></tr>';return;}
+ $("employeeRows").innerHTML=rows.map(e=>'<tr><td><b>'+safe(e.employee_code)+'</b></td><td>'+safe(e.full_name)+'</td><td>'+safe(e.mobile_number)+'</td><td>'+safe(e.job_title)+'</td><td>'+safe(e.department||"—")+'</td><td>'+safe(e.joining_date)+'</td><td>'+safe(e.employment_status)+'</td><td><button class="btn muted" data-employee-edit="'+safe(e.id)+'" type="button">Edit</button></td></tr>').join("");
+ $("employeeRows").querySelectorAll("[data-employee-edit]").forEach(b=>b.onclick=()=>openEmployeeForm(employees.find(e=>e.id===b.dataset.employeeEdit)));
+}
+$("employeeForm").onsubmit=async e=>{
+ e.preventDefault();if(!activeUser||activeUser.id!==ADMIN_UID)return;
+ const id=value("employeeRecordId"),name=value("employeeName"),mobile=value("employeeMobile"),job=value("employeeJobTitle");
+ if(!name||!mobile||!job){say($("employeeStatusText"),"Name, Mobile ও Job Title আবশ্যক।",true);return;}
+ const row={full_name:name,mobile_number:mobile,alternative_phone:value("employeeAltPhone")||null,email:value("employeeEmail")||null,job_title:job,department:value("employeeDepartment")||null,address:value("employeeAddress")||null,emergency_contact_name:value("employeeEmergencyName")||null,emergency_contact_phone:value("employeeEmergencyPhone")||null,joining_date:value("employeeJoiningDate"),employment_status:value("employeeEmploymentStatus"),notes:value("employeeNotes")||null};
+ say($("employeeStatusText"),"Employee সংরক্ষণ হচ্ছে...");
+ const result=id?await db.from("erp_employees").update(row).eq("id",id).select("id").single():await db.from("erp_employees").insert({...row,created_by:activeUser.id}).select("id,employee_code").single();
+ if(result.error){say($("employeeStatusText"),"সংরক্ষণ হয়নি: "+result.error.message,true);return;}
+ say($("employeeStatusText"),id?"Employee তথ্য আপডেট হয়েছে।":"Employee তৈরি হয়েছে। Employee ID: "+result.data.employee_code);
+ $("employeeFormPanel").hidden=true;resetEmployeeForm();await loadEmployees();
+};
+$("newEmployeeBtn").onclick=()=>openEmployeeForm();
+$("closeEmployeeForm").onclick=$("cancelEmployeeForm").onclick=()=>{$("employeeFormPanel").hidden=true;resetEmployeeForm();};
+$("employeeSearch").oninput=renderEmployees;$("employeeStatusFilter").onchange=loadEmployees;
+$("employeesTab").onclick=async()=>{
+ ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule"].forEach(id=>$(id).hidden=true);
+ $("customerModulePanel").hidden=true;$("customerFormPanel").hidden=true;$("employeeModule").hidden=false;
+ ["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","customerDueTab","salesReturnTab","purchaseReturnTab"].forEach(id=>$(id).classList.remove("active"));
+ $("employeesTab").classList.add("active");await loadEmployees();
+};
+
 let purchaseReturnOptions=[];
 async function loadPurchaseReturns(){
  const [items,returned,history]=await Promise.all([
