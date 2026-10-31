@@ -965,12 +965,12 @@ document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="stockReportsTab")t.addE
 
 
 async function loadEmployeeReports(){
- const month=value("employeeReportMonth")||new Date().toISOString().slice(0,7),start=month+"-01",endDate=new Date(Number(month.slice(0,4)),Number(month.slice(5,7)),1),end=endDate.getFullYear()+"-"+String(endDate.getMonth()+1).padStart(2,"0")+"-"+String(endDate.getDate()).padStart(2,"0");
+ await loadInventoryBranches();const branch=value("employeeReportBranch");if(!branch){say($("employeeReportStatusText"),"Employee Report-এর জন্য Branch নির্বাচন করুন।");return;}const month=value("employeeReportMonth")||new Date().toISOString().slice(0,7),start=month+"-01",endDate=new Date(Number(month.slice(0,4)),Number(month.slice(5,7)),1),end=endDate.getFullYear()+"-"+String(endDate.getMonth()+1).padStart(2,"0")+"-"+String(endDate.getDate()).padStart(2,"0");
  say($("employeeReportStatusText"),"Employee Report তৈরি হচ্ছে...");
  const [e,a,p]=await Promise.all([
-  db.from("erp_employees").select("id,employee_code,full_name,mobile_number,job_title,joining_date,employment_status").order("full_name").limit(5000),
-  db.from("erp_attendance").select("employee_id,attendance_date,attendance_status").gte("attendance_date",start).lt("attendance_date",end).limit(10000),
-  db.from("erp_employee_payroll").select("employee_id,net_salary,payment_status,payroll_month").eq("payroll_month",start).limit(5000)
+  db.from("erp_employees").select("id,employee_code,full_name,mobile_number,job_title,joining_date,employment_status").eq("branch_id",branch).order("full_name").limit(5000),
+  db.from("erp_attendance").select("employee_id,attendance_date,attendance_status").eq("branch_id",branch).gte("attendance_date",start).lt("attendance_date",end).limit(10000),
+  db.from("erp_employee_payroll").select("employee_id,net_salary,payment_status,payroll_month").eq("branch_id",branch).eq("payroll_month",start).limit(5000)
  ]);
  const bad=[e,a,p].find(x=>x.error);if(bad){say($("employeeReportStatusText"),"Employee Report load হয়নি: "+bad.error.message,true);return;}
  window.employeeReportData={employees:e.data||[],attendance:a.data||[],payroll:p.data||[]};renderEmployeeReports();
