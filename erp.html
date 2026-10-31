@@ -70,7 +70,7 @@
 <section id="employeeFormPanel" class="panel inner-panel" hidden><div class="section-head"><div><h3 id="employeeFormTitle">Add Employee</h3><p>Employee Login / Password এখানে তৈরি হয় না।</p></div><button id="closeEmployeeForm" class="btn muted" type="button">Close</button></div>
 <form id="employeeForm" class="form-grid"><input id="employeeRecordId" type="hidden">
 <label>Employee ID<input id="employeeCode" readonly placeholder="Save করার পর তৈরি হবে"></label><label>Full Name *<input id="employeeName" maxlength="180" required></label>
-<label>Mobile Number *<input id="employeeMobile" type="tel" maxlength="30" required></label><label>Alternative Phone<input id="employeeAltPhone" type="tel" maxlength="30"></label>
+<label>Branch *<select id="employeeBranch" required><option value="">Branch নির্বাচন করুন</option></select></label><label>Mobile Number *<input id="employeeMobile" type="tel" maxlength="30" required></label><label>Alternative Phone<input id="employeeAltPhone" type="tel" maxlength="30"></label>
 <label>Email<input id="employeeEmail" type="email" maxlength="180"></label><label>Job Title *<input id="employeeJobTitle" maxlength="120" required placeholder="যেমন: Pharmacist / Cashier"></label>
 <label>Department<input id="employeeDepartment" maxlength="120"></label><label>Joining Date *<input id="employeeJoiningDate" type="date" required></label>
 <label>Emergency Contact Name<input id="employeeEmergencyName" maxlength="150"></label><label>Emergency Contact Phone<input id="employeeEmergencyPhone" maxlength="30"></label>
@@ -181,7 +181,7 @@
 <section id="payrollModule" class="panel" hidden>
 <div class="section-head"><div><h2>Salary &amp; Payroll Management</h2><p>কর্মচারীর মাসিক বেতন, ভাতা, বোনাস, কর্তন ও পেমেন্ট রেকর্ড করুন।</p></div><button id="refreshPayrollBtn" class="btn muted" type="button">Refresh</button></div>
 <div class="panel inner-panel"><h3>Monthly Payroll Entry</h3><form id="payrollForm" class="form-grid">
-<label>Employee *<select id="payrollEmployee" required><option value="">Employee নির্বাচন করুন</option></select></label>
+<label>Payroll Branch *<select id="payrollBranch"><option value="">Branch নির্বাচন করুন</option></select></label><label>Employee *<select id="payrollEmployee" required><option value="">Employee নির্বাচন করুন</option></select></label>
 <label>Payroll Month *<input id="payrollMonth" type="month" required></label>
 <label>Basic Salary (৳) *<input id="payrollBasic" type="number" min="0" step="0.01" value="0" required></label>
 <label>Allowances (৳)<input id="payrollAllowances" type="number" min="0" step="0.01" value="0"></label>
@@ -233,7 +233,7 @@
 <div class="section-head"><div><h2>Attendance Management</h2><p>এখন ম্যানুয়ালি হাজিরা নিন। Fingerprint machine কিনলে পরে ডিভাইস Integration করা যাবে।</p></div><button id="refreshAttendanceBtn" class="btn muted" type="button">Refresh</button></div>
 <div class="panel inner-panel"><h3>Fingerprint System Settings</h3><div class="form-grid"><label class="full"><span><input id="fingerprintEnabled" type="checkbox"> Fingerprint System ON</span></label><p id="fingerprintModeStatus" class="status full" role="status">Fingerprint OFF — Manual Attendance চালু আছে।</p><p class="full">মেশিন সংযুক্ত না থাকায় ON করলেও আঙুলের ছাপ স্ক্যান হবে না। মেশিন কিনে সংযোগ করার পর Integration চালু করতে হবে। Manual Attendance আলাদাভাবে কাজ করবে।</p><div class="full"><button id="saveFingerprintSettingBtn" class="btn" type="button">Save Fingerprint Setting</button></div></div></div>
 <div class="panel inner-panel"><h3>Record Daily Attendance</h3><div class="form-grid">
-<label>Attendance Date *<input id="attendanceDate" type="date" required></label>
+<label>Attendance Branch *<select id="attendanceBranch"><option value="">Branch নির্বাচন করুন</option></select></label><label>Attendance Date *<input id="attendanceDate" type="date" required></label>
 <label>Employee *<select id="attendanceEmployee"><option value="">Employee নির্বাচন করুন</option></select></label>
 <label>Status<select id="attendanceStatus"><option value="present">Present</option><option value="absent">Absent</option><option value="leave">Leave</option><option value="holiday">Holiday</option></select></label>
 <label>Check-in<input id="attendanceCheckIn" type="time"></label><label>Check-out<input id="attendanceCheckOut" type="time"></label>
