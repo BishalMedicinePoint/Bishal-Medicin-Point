@@ -145,6 +145,7 @@
 </section>
 <section id="attendanceModule" class="panel" hidden>
 <div class="section-head"><div><h2>Attendance Management</h2><p>এখন ম্যানুয়ালি হাজিরা নিন। Fingerprint machine কিনলে পরে ডিভাইস Integration করা যাবে।</p></div><button id="refreshAttendanceBtn" class="btn muted" type="button">Refresh</button></div>
+<div class="panel inner-panel"><h3>Fingerprint System Settings</h3><div class="form-grid"><label class="full"><span><input id="fingerprintEnabled" type="checkbox"> Fingerprint System ON</span></label><p id="fingerprintModeStatus" class="status full" role="status">Fingerprint OFF — Manual Attendance চালু আছে।</p><p class="full">মেশিন সংযুক্ত না থাকায় ON করলেও আঙুলের ছাপ স্ক্যান হবে না। মেশিন কিনে সংযোগ করার পর Integration চালু করতে হবে। Manual Attendance আলাদাভাবে কাজ করবে।</p><div class="full"><button id="saveFingerprintSettingBtn" class="btn" type="button">Save Fingerprint Setting</button></div></div></div>
 <div class="panel inner-panel"><h3>Record Daily Attendance</h3><div class="form-grid">
 <label>Attendance Date *<input id="attendanceDate" type="date" required></label>
 <label>Employee *<select id="attendanceEmployee"><option value="">Employee নির্বাচন করুন</option></select></label>
