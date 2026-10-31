@@ -729,15 +729,22 @@ function renderAccounts(){
  $("accountTransactionRows").innerHTML=rows.length?rows.map(t=>'<tr><td>'+safe(t.erp_accounts?.account_name||"")+'</td><td>'+safe(t.transaction_date)+'</td><td>'+safe(t.transaction_type)+'</td><td>'+safe(t.category)+'</td><td>'+money(t.amount)+'</td><td>'+safe(t.reference_number||"—")+'</td><td>'+safe(t.description||"")+'</td></tr>').join(""):'<tr><td colspan="7">কোনো Transaction পাওয়া যায়নি।</td></tr>';
 }
 async function loadAccounts(){
- const [a,t]=await Promise.all([
-  db.from("erp_accounts").select("*").eq("is_active",true).order("account_name"),
-  (value("accountTransactionMonth")?db.from("erp_account_transactions").select("*,erp_accounts(account_name)").gte("transaction_date",value("accountTransactionMonth")+"-01").lt("transaction_date",new Date(new Date(value("accountTransactionMonth")+"-01").getFullYear(),new Date(value("accountTransactionMonth")+"-01").getMonth()+1,1).toISOString().slice(0,10)):db.from("erp_account_transactions").select("*,erp_accounts(account_name)")).order("transaction_date",{ascending:false}).limit(500)
- ]);
- if(a.error){say($("accountStatus"),"Account load হয়নি: "+a.error.message,true);return;}
- if(t.error){say($("accountStatus"),"Transaction load হয়নি: "+t.error.message,true);return;}
- accountCache=a.data||[];accountTransactionCache=t.data||[];
+ const {data:a,error:accountError}=await db.from("erp_accounts").select("*").eq("is_active",true).order("account_name");
+ if(accountError){say($("accountStatus"),"Account load হয়নি: "+accountError.message,true);return;}
+ accountCache=a||[];
+ const month=value("accountTransactionMonth");
+ let query=db.from("erp_account_transactions").select("*,erp_accounts(account_name)").order("transaction_date",{ascending:false}).order("created_at",{ascending:false});
+ if(month){const first=new Date(month+"-01T00:00:00");const next=new Date(first.getFullYear(),first.getMonth()+1,1);query=query.gte("transaction_date",month+"-01").lt("transaction_date",next.toISOString().slice(0,10));}
+ const all=[];let offset=0;
+ while(true){
+  const {data,error}=await query.range(offset,offset+999);
+  if(error){say($("accountStatus"),"Transaction load হয়নি: "+error.message,true);return;}
+  const batch=data||[];all.push(...batch);offset+=batch.length;if(batch.length<1000)break;
+ }
+ accountTransactionCache=all;
  $("transactionAccount").innerHTML='<option value="">Account নির্বাচন করুন</option>'+accountCache.map(x=>'<option value="'+x.id+'">'+safe(x.account_name)+'</option>').join("");
  renderAccounts();
+ $("accountStatus").textContent=all.length+"টি Account Transaction লোড হয়েছে।";
 }
 $("accountForm").onsubmit=async e=>{
  e.preventDefault();if(!activeUser||activeUser.id!==ADMIN_UID){say($("accountStatus"),"শুধু Super Admin Account তৈরি করতে পারবেন।",true);return;}
