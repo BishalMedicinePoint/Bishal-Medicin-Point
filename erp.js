@@ -118,8 +118,8 @@ $("medicineForm").onsubmit=async e=>{e.preventDefault();if(!activeUser||activeUs
 };
 $("newMedicineBtn").onclick=()=>openMedicine();$("closeMedicineForm").onclick=$("cancelMedicineForm").onclick=()=>{$("medicineFormPanel").hidden=true;};
 $("medicineSearch").oninput=loadMedicines;$("medicineStatus").onchange=loadMedicines;
-$("customersTab").onclick=()=>{$("medicineModule").hidden=true;$("batchModule").hidden=true;$("barcodeModule").hidden=true;$("newCustomerBtn").closest(".panel").hidden=false;$("customerFormPanel").hidden=true;$("customersTab").classList.add("active");$("medicinesTab").classList.remove("active");};
-$("medicinesTab").onclick=()=>{$("batchModule").hidden=true;$("barcodeModule").hidden=true;$("medicineModule").hidden=false;$("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;$("medicinesTab").classList.add("active");$("customersTab").classList.remove("active");loadMedicines();};
+$("customersTab").onclick=()=>{$("medicineModule").hidden=true;$("batchModule").hidden=true;$("barcodeModule").hidden=true;$("posModule").hidden=true;$("newCustomerBtn").closest(".panel").hidden=false;$("customerFormPanel").hidden=true;$("customersTab").classList.add("active");$("medicinesTab").classList.remove("active");};
+$("medicinesTab").onclick=()=>{$("batchModule").hidden=true;$("barcodeModule").hidden=true;$("posModule").hidden=true;$("medicineModule").hidden=false;$("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;$("medicinesTab").classList.add("active");$("customersTab").classList.remove("active");loadMedicines();};
 
 
 async function loadBatchMedicineOptions(selected=""){
@@ -183,7 +183,7 @@ $("newBatchBtn").onclick=()=>openBatch();
 $("closeBatchForm").onclick=$("cancelBatchForm").onclick=()=>{$("batchFormPanel").hidden=true;$("batchMedicine").disabled=false;$("batchQuantity").disabled=false;};
 $("batchSearch").oninput=loadBatches;$("batchExpiryFilter").onchange=loadBatches;
 $("batchesTab").onclick=()=>{
- $("medicineModule").hidden=true;$("barcodeModule").hidden=true;$("batchModule").hidden=false;
+ $("medicineModule").hidden=true;$("barcodeModule").hidden=true;$("posModule").hidden=true;$("batchModule").hidden=false;
  $("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;
  $("batchesTab").classList.add("active");$("customersTab").classList.remove("active");$("medicinesTab").classList.remove("active");
  loadBatches();
@@ -243,11 +243,26 @@ $("barcodeScanInput").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preve
 $("barcodeSearch").oninput=renderBarcodeRows;$("barcodeFilter").onchange=renderBarcodeRows;
 $("printBarcodeBtn").onclick=()=>{if(!$("barcodeLabelPanel").hidden)window.print();};
 $("barcodeTab").onclick=()=>{
- $("medicineModule").hidden=true;$("batchModule").hidden=true;$("barcodeModule").hidden=false;
+ $("medicineModule").hidden=true;$("batchModule").hidden=true;$("posModule").hidden=true;$("barcodeModule").hidden=false;
  $("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;
  ["customersTab","medicinesTab","batchesTab"].forEach(id=>$(id).classList.remove("active"));
  $("barcodeTab").classList.add("active");loadBarcodeMedicines();
 };
+
+
+let posCart=[],posBatches=[];
+const pMoney=n=>Number(n||0).toFixed(2);
+function pRender(){const body=$("posCartRows");body.innerHTML=posCart.length?posCart.map((x,i)=>'<tr><td>'+safe(x.name)+'<br><small>'+safe(x.batch)+'</small></td><td>'+x.qty+'</td><td>'+pMoney(x.price)+'</td><td>'+pMoney(x.qty*x.price)+'</td><td><button class="btn muted" data-r="'+i+'">Remove</button></td></tr>').join(""):'<tr><td colspan="5">Cart খালি।</td></tr>';body.querySelectorAll("[data-r]").forEach(b=>b.onclick=()=>{posCart.splice(+b.dataset.r,1);pRender();});const sub=posCart.reduce((s,x)=>s+x.qty*x.price,0),disc=Number(value("posDiscount")||0);$("posSubtotal").textContent=pMoney(sub);$("posTotal").textContent=pMoney(Math.max(0,sub-disc));if(!$("posPaid").dataset.touched)$("posPaid").value=pMoney(Math.max(0,sub-disc));}
+async function pSearch(){const q=value("posMedicineSearch");if(!q)return;const {data,error}=await db.from("erp_medicines").select("id,medicine_name,selling_price,barcode").eq("is_active",true).or("medicine_name.ilike.%"+q+"%,barcode.eq."+q).limit(10);if(error){say($("posProductStatus"),error.message,true);return;}const all=await Promise.all((data||[]).map(async m=>{const r=await db.from("erp_medicine_batches").select("id,batch_number,expiry_date,quantity_available,mrp").eq("medicine_id",m.id).eq("is_active",true).gt("quantity_available",0).gte("expiry_date",today()).order("expiry_date");return (r.data||[]).map(b=>({...b,m}));}));posBatches=all.flat();$("posBatchSelect").innerHTML='<option value="">Batch নির্বাচন করুন</option>'+posBatches.map(b=>'<option value="'+b.id+'">'+safe(b.m.medicine_name)+' · '+safe(b.batch_number)+' · Qty '+b.quantity_available+'</option>').join("");say($("posProductStatus"),posBatches.length?posBatches.length+"টি Batch পাওয়া গেছে।":"Stock নেই।",!posBatches.length);}
+$("posMedicineSearch").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();pSearch();}};
+$("posBatchSelect").onchange=()=>{const b=posBatches.find(x=>x.id===value("posBatchSelect"));if(b)$("posUnitPrice").value=Number(b.m.selling_price||b.mrp||0).toFixed(2);};
+$("addPosItemBtn").onclick=()=>{const b=posBatches.find(x=>x.id===value("posBatchSelect")),qty=Number(value("posQuantity")),price=Number(value("posUnitPrice"));if(!b||!Number.isInteger(qty)||qty<1||qty>b.quantity_available||price<0||!Number.isFinite(price)){say($("posProductStatus"),"Batch, Quantity ও Price সঠিক দিন।",true);return;}const x=posCart.find(x=>x.batch_id===b.id);if(x){if(x.qty+qty>b.quantity_available){say($("posProductStatus"),"Stock যথেষ্ট নেই।",true);return;}x.qty+=qty;}else posCart.push({batch_id:b.id,name:b.m.medicine_name,batch:b.batch_number,qty,price});pRender();};
+$("posDiscount").oninput=pRender;$("posPaid").oninput=()=>{$("posPaid").dataset.touched="1";};
+async function pCustomers(){const {data,error}=await db.from("customers").select("id,customer_name,mobile_number").eq("is_active",true).order("customer_name");if(error)return;$("posCustomer").innerHTML='<option value="">Walk-in Customer</option>'+(data||[]).map(c=>'<option value="'+c.id+'">'+safe(c.customer_name)+' · '+safe(c.mobile_number)+'</option>').join("");}
+async function pInvoices(){const {data,error}=await db.from("erp_sales_invoices").select("invoice_number,sale_date,total,paid,due,customers(customer_name)").order("created_at",{ascending:false}).limit(20);if(error)return;$("posInvoiceRows").innerHTML=(data||[]).map(x=>'<tr><td>'+safe(x.invoice_number)+'</td><td>'+new Date(x.sale_date).toLocaleString("en-BD")+'</td><td>'+safe(x.customers?.customer_name||"Walk-in")+'</td><td>'+pMoney(x.total)+'</td><td>'+pMoney(x.paid)+'</td><td>'+pMoney(x.due)+'</td></tr>').join("")||'<tr><td colspan="6">Invoice নেই।</td></tr>';}
+$("completeSaleBtn").onclick=async()=>{const sub=posCart.reduce((s,x)=>s+x.qty*x.price,0),disc=Number(value("posDiscount")||0),paid=Number(value("posPaid")||0),total=sub-disc;if(!activeUser||activeUser.id!==ADMIN_UID||!posCart.length||disc<0||disc>sub||paid<0||paid>total||(total>paid&&!value("posCustomer"))){say($("posStatus"),"Cart, Discount, Paid Amount ও Credit Customer পরীক্ষা করুন।",true);return;}if(!confirm("৳ "+pMoney(total)+" বিক্রি সম্পন্ন করবেন?"))return;$("completeSaleBtn").disabled=true;const {data,error}=await db.rpc("bmp_create_sale",{p_customer_id:value("posCustomer")||null,p_discount:disc,p_paid:paid,p_payment_method:value("posPaymentMethod"),p_payment_reference:value("posPaymentReference"),p_notes:value("posNotes"),p_items:posCart.map(x=>({batch_id:x.batch_id,quantity:x.qty,unit_price:x.price}))});$("completeSaleBtn").disabled=false;if(error){say($("posStatus"),"বিক্রি হয়নি; Stock অপরিবর্তিত। "+error.message,true);return;} $("posReceiptMeta").textContent=data.invoice_number;$("posReceiptContent").innerHTML='<h2>Bishal Medicine Point</h2><p>Hospital Road, Maijdee, Noakhali · 01816367262</p><h3>Invoice '+safe(data.invoice_number)+'</h3><p>Subtotal ৳ '+pMoney(data.subtotal)+'<br>Discount ৳ '+pMoney(data.discount)+'<br><b>Total ৳ '+pMoney(data.total)+'</b><br>Paid ৳ '+pMoney(data.paid)+'<br>Due ৳ '+pMoney(data.due)+'</p>'+posCart.map(x=>'<p>'+safe(x.name)+' × '+x.qty+' = ৳ '+pMoney(x.qty*x.price)+'</p>').join("");$("posReceiptPanel").hidden=false;posCart=[];$("posDiscount").value=0;$("posPaid").dataset.touched="";pRender();say($("posStatus"),"বিক্রি সফল: "+data.invoice_number);await pInvoices();await pSearch();};
+$("printPosReceiptBtn").onclick=()=>window.print();$("refreshPosBtn").onclick=async()=>{await pCustomers();await pInvoices();};$("clearPosBtn").onclick=()=>{posCart=[];pRender();};
+$("posTab").onclick=async()=>{$("medicineModule").hidden=true;$("batchModule").hidden=true;$("barcodeModule").hidden=true;$("posModule").hidden=false;$("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;["customersTab","medicinesTab","batchesTab","barcodeTab"].forEach(id=>$(id).classList.remove("active"));$("posTab").classList.add("active");await pCustomers();await pInvoices();};
 
 if(!window.supabase||!window.BMP_SUPABASE_URL||!window.BMP_SUPABASE_ANON_KEY||window.BMP_SUPABASE_ANON_KEY.startsWith("PASTE_")){say($("loginStatus"),"Supabase config পাওয়া যায়নি।",true);return;}
 db=window.supabase.createClient(window.BMP_SUPABASE_URL,window.BMP_SUPABASE_ANON_KEY);
