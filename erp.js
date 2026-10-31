@@ -970,3 +970,45 @@ $("employeeReportsTab").onclick=async()=>{
 document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="employeeReportsTab")t.addEventListener("click",()=>{$("employeeReportsModule").hidden=true;});});
 
 })();
+
+async function loadDashboard(){
+ const status=$("dashboardStatus"), rows=$("dashboardAlertRows");
+ say(status,"Dashboard data লোড হচ্ছে...");
+ try{
+  const [sales,meds,cust,emps,batches]=await Promise.all([
+   db.from("erp_sales_invoices").select("*").limit(5000),
+   db.from("erp_medicines").select("id",{count:"exact",head:true}),
+   db.from("customers").select("id",{count:"exact",head:true}),
+   db.from("erp_employees").select("id",{count:"exact",head:true}),
+   db.from("erp_medicine_batches").select("*").limit(5000)
+  ]);
+  const failed=[sales,meds,cust,emps,batches].find(x=>x.error);
+  if(failed) throw failed.error;
+  const now=today(), saleRows=sales.data||[];
+  const todaySales=saleRows.filter(x=>String(x.created_at||x.invoice_date||"").slice(0,10)===now);
+  const amount=x=>Number(x.total_amount??x.grand_total??x.net_total??x.total??0);
+  $("dashSales").textContent=money(todaySales.reduce((s,x)=>s+amount(x),0));
+  $("dashInvoices").textContent=String(todaySales.length);
+  $("dashMedicines").textContent=String(meds.count??0);
+  $("dashCustomers").textContent=String(cust.count??0);
+  $("dashEmployees").textContent=String(emps.count??0);
+  const batchRows=batches.data||[]; $("dashBatches").textContent=String(batchRows.length);
+  const qty=x=>Number(x.available_quantity??x.quantity_available??x.remaining_quantity??x.quantity??x.current_quantity??0);
+  const active=batchRows.filter(x=>qty(x)>0);
+  const low=active.filter(x=>qty(x)<=10);
+  const limit=new Date(now+"T00:00:00");limit.setDate(limit.getDate()+90);
+  const expiring=active.filter(x=>x.expiry_date&&x.expiry_date>=now&&x.expiry_date<=limit.toISOString().slice(0,10));
+  $("dashLowStock").textContent=String(low.length);
+  $("dashExpiring").textContent=String(expiring.length);
+  const alerts=[...low.map(x=>({...x,_alert:"Low stock"})),...expiring.map(x=>({...x,_alert:"Expiring soon"}))].slice(0,30);
+  rows.innerHTML=alerts.length?alerts.map(x=>'<tr><td>'+safe(x.medicine_name||x.name||x.medicine_id||"—")+'</td><td>'+safe(x.batch_number||"—")+'</td><td>'+qty(x)+'</td><td>'+safe(x.expiry_date||"—")+'</td><td>'+safe(x._alert)+'</td></tr>').join(""):'<tr><td colspan="5">কোনো Low Stock / Expiry alert নেই।</td></tr>';
+  say(status,"Dashboard আপডেট হয়েছে।");
+ }catch(e){say(status,"Dashboard load হয়নি: "+e.message,true);rows.innerHTML='<tr><td colspan="5">তথ্য পাওয়া যায়নি।</td></tr>';}
+}
+$("dashboardTab").onclick=async()=>{
+ document.querySelectorAll("#workspace > .panel").forEach(el=>el.hidden=true);
+ $("dashboardModule").hidden=false;document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+ $("dashboardTab").classList.add("active");await loadDashboard();
+};
+$("refreshDashboardBtn").onclick=loadDashboard;
+document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="dashboardTab")t.addEventListener("click",()=>{$("dashboardModule").hidden=true;});});
