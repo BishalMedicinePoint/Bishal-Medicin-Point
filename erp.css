@@ -23,3 +23,7 @@ body[data-theme="dark"] .status.error{background:#482727;color:#ffdede}
 
 .welcome-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 @media print{body{background:#fff!important;color:#111!important}.topbar,.tabs,.welcome-actions,button,.toolbar,.form-actions,footer{display:none!important}#workspace{display:block!important}.panel{display:block!important;box-shadow:none!important;border:0!important;break-inside:avoid}.table-wrap{overflow:visible!important}table{min-width:0!important;font-size:10px!important}th,td{padding:5px!important;color:#111!important;background:#fff!important}.stock-card{break-inside:avoid}}
+
+/* 31-module workspace additions */
+#photoManagerPreview{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}
+#photoManagerPreview img{border:1px solid var(--line);border-radius:10px;padding:4px;background:#fff}
