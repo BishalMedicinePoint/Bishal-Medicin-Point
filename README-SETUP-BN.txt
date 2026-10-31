@@ -22,8 +22,9 @@ BISHAL MEDICINE POINT - ADMIN PANEL UPDATE
 
 ERP CUSTOMER MODULE — FIRST DEVELOPMENT PHASE
 
-ERP Workspace:
+ERP Workspace (শুধু main branch-এ deploy/merge করার পর):
 https://bishalmedicinepoint.github.io/Bishal-Medicin-Point/erp.html
+বর্তমানে কোডটি erp-foundation branch-এ আছে; তাই live URL এখনো চালু নয়।
 
 Setup:
 1. Supabase Dashboard খুলে SQL Editor-এ যান।
