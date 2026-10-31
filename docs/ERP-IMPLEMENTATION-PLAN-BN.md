@@ -139,3 +139,10 @@ Implement all 30 modules requested by the owner. Preserve the current public med
 - Put the complete box/pack/strip/tablet pricing and conversion controls directly inside the Medicine Add form (and keep them editable in Medicine Edit), not only in Purchase or Batch screens.
 - Fields on Medicine Add: box price, strip price, per-tablet/per-unit price, purchase rate, sale price, MRP, units per strip, strips per box, and sale units allowed.
 - The Add form should preview calculated conversions (for example box → strip → tablet) and validate that quantities and prices are consistent. Batch-specific actual purchase cost and expiry remain recorded on the Batch/Purchase entry.
+
+## Invoice paper-size selector
+
+- Add an Invoice Settings paper-size dropdown with A4, A5, 80mm thermal, and 58mm thermal presets.
+- Allow selecting the default size and choosing a different size at print/preview time when permitted.
+- Preview must reflect the selected page width, margins, typography, and invoice layout; support browser print and PDF output.
+- Persist the Super Admin's default setting and keep invoice content/financial totals identical across sizes.
