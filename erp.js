@@ -60,6 +60,7 @@ $("customerPhoto").addEventListener("change",e=>{
 });
 $("customerForm").onsubmit=async e=>{
  e.preventDefault();if(!activeUser||activeUser.id!==ADMIN_UID)return;
+ await loadFingerprintSetting();
  const id=value("recordId"),mobile=value("mobile"),name=value("customerName");
  if(!name||!mobile){say($("pageStatus"),"Customer Name এবং Mobile Number আবশ্যক।",true);return;}
  const duplicateQuery=await db.from("customers").select("id,customer_name,mobile_number").eq("mobile_number",mobile).eq("is_active",true);
@@ -533,6 +534,21 @@ function attendanceMonthBounds(){
  const [y,mo]=m.split("-").map(Number);
  return {start:m+"-01",end:new Date(y,mo,1).toISOString().slice(0,10)};
 }
+async function loadFingerprintSetting(){
+ const {data,error}=await db.from("erp_attendance_settings").select("fingerprint_enabled").eq("id",true).maybeSingle();
+ if(error){say($("fingerprintModeStatus"),"Fingerprint setting load হয়নি: "+error.message,true);return;}
+ $("fingerprintEnabled").checked=!!data?.fingerprint_enabled;
+ $("fingerprintModeStatus").textContent=data?.fingerprint_enabled?"Fingerprint System ON — মেশিন এখনো সংযুক্ত নয়; Manual Attendance চালু আছে।":"Fingerprint System OFF — Manual Attendance চালু আছে।";
+}
+$("saveFingerprintSettingBtn").onclick=async()=>{
+ if(!activeUser||activeUser.id!==ADMIN_UID){say($("fingerprintModeStatus"),"শুধু Super Admin এই সেটিং পরিবর্তন করতে পারবেন।",true);return;}
+ const enabled=$("fingerprintEnabled").checked;
+ $("saveFingerprintSettingBtn").disabled=true;
+ const {error}=await db.from("erp_attendance_settings").upsert({id:true,fingerprint_enabled:enabled,updated_by:activeUser.id},{onConflict:"id"});
+ $("saveFingerprintSettingBtn").disabled=false;
+ if(error){say($("fingerprintModeStatus"),"সেটিং সংরক্ষণ হয়নি: "+error.message,true);return;}
+ $("fingerprintModeStatus").textContent=enabled?"Fingerprint System ON — মেশিন এখনো সংযুক্ত নয়; Manual Attendance চালু আছে।":"Fingerprint System OFF — Manual Attendance চালু আছে।";
+};
 async function loadAttendance(){
  if(!activeUser||activeUser.id!==ADMIN_UID)return;
  const [emps,month]=await Promise.all([
