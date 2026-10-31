@@ -934,4 +934,39 @@ $("stockReportsTab").onclick=async()=>{
 };
 document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="stockReportsTab")t.addEventListener("click",()=>{$("stockReportsModule").hidden=true;});});
 
+
+async function loadEmployeeReports(){
+ const month=value("employeeReportMonth")||new Date().toISOString().slice(0,7),start=month+"-01",endDate=new Date(Number(month.slice(0,4)),Number(month.slice(5,7)),1),end=endDate.getFullYear()+"-"+String(endDate.getMonth()+1).padStart(2,"0")+"-"+String(endDate.getDate()).padStart(2,"0");
+ say($("employeeReportStatusText"),"Employee Report তৈরি হচ্ছে...");
+ const [e,a,p]=await Promise.all([
+  db.from("erp_employees").select("id,employee_code,full_name,mobile_number,job_title,joining_date,employment_status").order("full_name").limit(5000),
+  db.from("erp_attendance").select("employee_id,attendance_date,attendance_status").gte("attendance_date",start).lt("attendance_date",end).limit(10000),
+  db.from("erp_employee_payroll").select("employee_id,net_salary,payment_status,payroll_month").eq("payroll_month",start).limit(5000)
+ ]);
+ const bad=[e,a,p].find(x=>x.error);if(bad){say($("employeeReportStatusText"),"Employee Report load হয়নি: "+bad.error.message,true);return;}
+ window.employeeReportData={employees:e.data||[],attendance:a.data||[],payroll:p.data||[]};renderEmployeeReports();
+ say($("employeeReportStatusText"),"Employee Report আপডেট হয়েছে: "+month+". "+((a.data||[]).length>=10000||(e.data||[]).length>=5000||(p.data||[]).length>=5000?"কোনো তালিকা রেকর্ড সীমায় পৌঁছেছে।":""));
+}
+function renderEmployeeReports(){
+ const d=window.employeeReportData;if(!d)return;const status=value("employeeReportStatus"),term=value("employeeReportSearch").trim().toLowerCase();
+ const employees=d.employees.filter(x=>(status==="all"||x.employment_status===status)&&(!term||[x.employee_code,x.full_name,x.mobile_number].join(" ").toLowerCase().includes(term)));
+ const counts={active:0,inactive:0,resigned:0};d.employees.forEach(x=>counts[x.employment_status]=(counts[x.employment_status]||0)+1);
+ $("erTotal").textContent=d.employees.length;$("erActive").textContent=counts.active;$("erInactive").textContent=counts.inactive;$("erResigned").textContent=counts.resigned;
+ const attendanceBy=new Map();d.attendance.forEach(x=>{if(!attendanceBy.has(x.employee_id))attendanceBy.set(x.employee_id,{present:0,absent:0,leave:0,holiday:0});const c=attendanceBy.get(x.employee_id);if(c[x.attendance_status]!==undefined)c[x.attendance_status]++;});
+ const payrollBy=new Map();d.payroll.forEach(x=>{payrollBy.set(x.employee_id,{net:Number(x.net_salary||0),status:x.payment_status});});
+ $("erPresent").textContent=d.attendance.filter(x=>x.attendance_status==="present").length;$("erAbsent").textContent=d.attendance.filter(x=>x.attendance_status==="absent").length;
+ $("erPayrollPaid").textContent=payrollMoney(d.payroll.filter(x=>x.payment_status==="paid").reduce((s,x)=>s+Number(x.net_salary||0),0));
+ $("erPayrollPending").textContent=payrollMoney(d.payroll.filter(x=>x.payment_status==="pending").reduce((s,x)=>s+Number(x.net_salary||0),0));
+ $("employeeReportRows").innerHTML=employees.length?employees.map(x=>{const c=attendanceBy.get(x.id)||{present:0,absent:0,leave:0};const p=payrollBy.get(x.id);return '<tr><td>'+safe(x.employee_code)+'</td><td>'+safe(x.full_name)+'</td><td>'+safe(x.mobile_number)+'</td><td>'+safe(x.job_title||"—")+'</td><td>'+safe(x.joining_date||"—")+'</td><td>'+safe(x.employment_status)+'</td><td>'+c.present+'</td><td>'+c.absent+'</td><td>'+c.leave+'</td><td>'+payrollMoney(p?.net||0)+(p?' ('+safe(p.status)+')':'')+'</td></tr>';}).join(""):'<tr><td colspan="10">এই Filter-এ কোনো Employee নেই।</td></tr>';
+}
+$("refreshEmployeeReportsBtn").onclick=loadEmployeeReports;
+$("employeeReportMonth").onchange=loadEmployeeReports;
+$("employeeReportStatus").onchange=renderEmployeeReports;
+$("employeeReportSearch").oninput=renderEmployeeReports;
+$("employeeReportsTab").onclick=async()=>{
+ ["customerModulePanel","customerFormPanel","medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","stockReportsModule","employeeModule","attendanceModule","permissionsModule","payrollModule","accountsModule","dueOverviewModule","customerDueModule","salesReturnModule","purchaseReturnModule","profitLossModule","financialReportsModule"].forEach(id=>{const el=$(id);if(el)el.hidden=true;});
+ $("employeeReportsModule").hidden=false;document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));$("employeeReportsTab").classList.add("active");await loadEmployeeReports();
+};
+document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="employeeReportsTab")t.addEventListener("click",()=>{$("employeeReportsModule").hidden=true;});});
+
 })();
