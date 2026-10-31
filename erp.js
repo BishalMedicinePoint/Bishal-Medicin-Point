@@ -23,7 +23,7 @@ function openForm(row=null){
  $("customerFormPanel").scrollIntoView({behavior:"smooth",block:"start"});
 }
 async function loadCustomers(){
- $("customerRows").innerHTML='<tr><td colspan="8">তথ্য লোড হচ্ছে...</td></tr>';
+ $("customerRows").innerHTML='<tr><td colspan="9">তথ্য লোড হচ্ছে...</td></tr>';
  let q=db.from("customers").select("id,customer_id,customer_name,mobile_number,customer_type,previous_due,credit_limit,is_active,registration_date,photo_path").order("created_at",{ascending:false});
  const status=$("statusFilter").value;if(status==="active")q=q.eq("is_active",true);if(status==="inactive")q=q.eq("is_active",false);
  const {data,error}=await q;
@@ -421,7 +421,7 @@ async function loadEmployees(){
  const status=value("employeeStatusFilter");
  if(status!=="all")q=q.eq("employment_status",status);
  const {data,error}=await q;
- if(error){$("employeeRows").innerHTML='<tr><td colspan="8">Employee list load হয়নি।</td></tr>';say($("employeeStatusText"),"Employee list load হয়নি: "+error.message,true);return;}
+ if(error){$("employeeRows").innerHTML='<tr><td colspan="9">Employee list load হয়নি।</td></tr>';say($("employeeStatusText"),"Employee list load হয়নি: "+error.message,true);return;}
  employees=data||[];renderEmployees();
 }
 function renderEmployees(){
