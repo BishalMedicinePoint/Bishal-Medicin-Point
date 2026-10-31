@@ -112,3 +112,17 @@ drop policy if exists "bmp_admin_delete_customer_photos" on storage.objects;
 create policy "bmp_admin_delete_customer_photos" on storage.objects
 for delete to authenticated
 using (bucket_id='customer-photos' and auth.uid()='7a3166f2-e4bb-42b8-a649-033dd2d02090'::uuid and (storage.foldername(name))[1]=auth.uid()::text);
+
+-- Keep updated_at current on edits.
+create or replace function public.bmp_touch_customer_updated_at()
+returns trigger language plpgsql as $$
+begin
+  new.updated_at := now();
+  return new;
+end;
+$$;
+
+drop trigger if exists bmp_customers_touch_updated_at on public.customers;
+create trigger bmp_customers_touch_updated_at
+before update on public.customers
+for each row execute function public.bmp_touch_customer_updated_at();
