@@ -302,7 +302,7 @@ $("recordSupplierPaymentBtn").onclick=async()=>{
  await loadPurchaseRows();
 };
 $("refreshPurchaseBtn").onclick=loadPurchaseLists;
-$("purchaseTab").onclick=async()=>{["medicineModule","batchModule","barcodeModule","posModule"].forEach(id=>$(id).hidden=true);$("purchaseModule").hidden=false;$("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;["customersTab","medicinesTab","batchesTab","barcodeTab","posTab"].forEach(id=>$(id).classList.remove("active"));$("purchaseTab").classList.add("active");await loadPurchaseLists();};
+$("purchaseTab").onclick=async()=>{["medicineModule","batchModule","barcodeModule","posModule","employeeModule"].forEach(id=>$(id).hidden=true);$("purchaseModule").hidden=false;$("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;["customersTab","medicinesTab","batchesTab","barcodeTab","posTab"].forEach(id=>$(id).classList.remove("active"));$("purchaseTab").classList.add("active");await loadPurchaseLists();};
 
 
 let stockMedicines=[],stockBatches=[];
@@ -336,7 +336,7 @@ async function loadStock(){
  renderStockRows();say($("stockStatus"),"Stock তথ্য আপডেট হয়েছে।");
 }
 $("stockSearch").oninput=renderStockRows;$("stockFilter").onchange=renderStockRows;$("refreshStockBtn").onclick=loadStock;
-$("stockTab").onclick=async()=>{["medicineModule","batchModule","barcodeModule","posModule","purchaseModule"].forEach(id=>$(id).hidden=true);$("stockModule").hidden=false;$("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab"].forEach(id=>$(id).classList.remove("active"));$("stockTab").classList.add("active");await loadStock();};
+$("stockTab").onclick=async()=>{["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","employeeModule"].forEach(id=>$(id).hidden=true);$("stockModule").hidden=false;$("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab"].forEach(id=>$(id).classList.remove("active"));$("stockTab").classList.add("active");await loadStock();};
 
 
 async function loadCustomerDue(){
@@ -369,7 +369,7 @@ $("recordCustomerPaymentBtn").onclick=async()=>{
 };
 $("refreshCustomerDueBtn").onclick=loadCustomerDue;
 $("customerDueTab").onclick=async()=>{
- ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","salesReturnModule"].forEach(id=>$(id).hidden=true);
+ ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","salesReturnModule","employeeModule"].forEach(id=>$(id).hidden=true);
  $("customerDueModule").hidden=false;$("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;
  ["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","salesReturnTab"].forEach(id=>$(id).classList.remove("active"));
  $("customerDueTab").classList.add("active");await loadCustomerDue();
@@ -424,7 +424,7 @@ $("newEmployeeBtn").onclick=()=>openEmployeeForm();
 $("closeEmployeeForm").onclick=$("cancelEmployeeForm").onclick=()=>{$("employeeFormPanel").hidden=true;resetEmployeeForm();};
 $("employeeSearch").oninput=renderEmployees;$("employeeStatusFilter").onchange=loadEmployees;
 $("employeesTab").onclick=async()=>{
- ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule"].forEach(id=>$(id).hidden=true);
+ ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","employeeModule"].forEach(id=>$(id).hidden=true);
  $("customerModulePanel").hidden=true;$("customerFormPanel").hidden=true;$("employeeModule").hidden=false;
  ["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","customerDueTab","salesReturnTab","purchaseReturnTab"].forEach(id=>$(id).classList.remove("active"));
  $("employeesTab").classList.add("active");await loadEmployees();
@@ -469,7 +469,7 @@ $("submitPurchaseReturnBtn").onclick=async()=>{
 };
 $("refreshPurchaseReturnBtn").onclick=loadPurchaseReturns;
 $("purchaseReturnTab").onclick=async()=>{
- ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule"].forEach(id=>$(id).hidden=true);
+ ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","employeeModule"].forEach(id=>$(id).hidden=true);
  $("purchaseReturnModule").hidden=false;$("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;
  ["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","customerDueTab","salesReturnTab"].forEach(id=>$(id).classList.remove("active"));
  $("purchaseReturnTab").classList.add("active");await loadPurchaseReturns();
@@ -517,7 +517,7 @@ $("submitSalesReturnBtn").onclick=async()=>{
 };
 $("refreshSalesReturnBtn").onclick=loadSalesReturns;
 $("salesReturnTab").onclick=async()=>{
- ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule"].forEach(id=>$(id).hidden=true);
+ ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","employeeModule"].forEach(id=>$(id).hidden=true);
  $("salesReturnModule").hidden=false;$("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;
  ["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","customerDueTab"].forEach(id=>$(id).classList.remove("active"));
  $("salesReturnTab").classList.add("active");await loadSalesReturns();
