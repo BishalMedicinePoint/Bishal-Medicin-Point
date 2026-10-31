@@ -108,3 +108,11 @@ Implement all 30 modules requested by the owner. Preserve the current public med
 - Do not scrape MedEx pages, automate browser extraction, or bulk-copy its database without MedEx permission. A public website link alone does not grant reuse rights.
 - Without an official API or authorized data export, automatic MedEx-to-ERP catalogue synchronization is not technically/legally available. The external lookup link and authorized file import are the supported no-API alternatives.
 - Imported catalogue data does not add stock; only a verified purchase/stock receipt changes on-hand quantity.
+
+## Medicine catalogue fields and categories
+
+- Catalogue records should support medicine/product name, generic/active ingredient, therapeutic group/category, dosage form, strength, pack size/pack description, manufacturer, barcode where available, product image where authorized, and reference/source information.
+- Support product categories and forms including tablets, capsules, syrup, drops, injections, cream, ointment, gel, shampoo, lotion, powder, and other pack types.
+- Store price fields separately and explicitly: source/reference price (only when supplied by an authorized source), shop purchase price, shop selling price/MRP, and pack price. Never assume an external listed price is the shop's current buying cost.
+- Provide image URL/upload fields only for images the shop owns or is authorized to use. Do not copy MedEx images or catalogue data in bulk without permission.
+- Provide search/filter by name, generic, group/category, company, dosage form, and pack size.
