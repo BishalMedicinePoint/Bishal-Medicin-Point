@@ -369,10 +369,59 @@ $("recordCustomerPaymentBtn").onclick=async()=>{
 };
 $("refreshCustomerDueBtn").onclick=loadCustomerDue;
 $("customerDueTab").onclick=async()=>{
- ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule"].forEach(id=>$(id).hidden=true);
+ ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","salesReturnModule"].forEach(id=>$(id).hidden=true);
  $("customerDueModule").hidden=false;$("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;
- ["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab"].forEach(id=>$(id).classList.remove("active"));
+ ["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","salesReturnTab"].forEach(id=>$(id).classList.remove("active"));
  $("customerDueTab").classList.add("active");await loadCustomerDue();
+};
+
+
+let salesReturnOptions=[];
+async function loadSalesReturns(){
+ const [items,returned,history]=await Promise.all([
+  db.from("erp_sales_invoice_items").select("id,invoice_id,medicine_name,batch_number,quantity,unit_price,erp_sales_invoices(invoice_number,customer_id,customers(customer_name))").order("created_at",{ascending:false}).limit(500),
+  db.from("erp_sales_return_items").select("invoice_item_id,quantity"),
+  db.from("erp_sales_returns").select("return_number,created_at,return_total,refund_amount,reason,erp_sales_invoices(invoice_number,customers(customer_name))").order("created_at",{ascending:false}).limit(50)
+ ]);
+ if(items.error){say($("salesReturnStatus"),"Invoice item load হয়নি: "+items.error.message,true);return;}
+ if(returned.error){say($("salesReturnStatus"),"Return history যাচাই হয়নি: "+returned.error.message,true);return;}
+ const used={};(returned.data||[]).forEach(x=>used[x.invoice_item_id]=(used[x.invoice_item_id]||0)+Number(x.quantity));
+ salesReturnOptions=(items.data||[]).map(x=>({...x,remaining:Number(x.quantity)-(used[x.id]||0)})).filter(x=>x.remaining>0);
+ $("salesReturnItem").innerHTML='<option value="">Invoice item নির্বাচন করুন</option>'+salesReturnOptions.map(x=>'<option value="'+x.id+'">'+safe(x.erp_sales_invoices?.invoice_number||"")+' · '+safe(x.medicine_name)+' · Batch '+safe(x.batch_number)+' · বাকি Qty '+x.remaining+' · ৳ '+purMoney(x.unit_price)+'</option>').join("");
+ $("salesReturnRows").innerHTML=history.error?'<tr><td colspan="7">Return history load হয়নি।</td></tr>':(history.data||[]).map(x=>'<tr><td>'+safe(x.return_number)+'</td><td>'+new Date(x.created_at).toLocaleString("en-BD")+'</td><td>'+safe(x.erp_sales_invoices?.invoice_number||"")+'</td><td>'+safe(x.erp_sales_invoices?.customers?.customer_name||"")+'</td><td>৳ '+purMoney(x.return_total)+'</td><td>৳ '+purMoney(x.refund_amount)+'</td><td>'+safe(x.reason)+'</td></tr>').join("")||'<tr><td colspan="7">এখনো Sales Return নেই।</td></tr>';
+}
+function updateSalesReturnPreview(){
+ const item=salesReturnOptions.find(x=>x.id===value("salesReturnItem"));
+ const qty=Math.max(0,Math.floor(Number(value("salesReturnQty"))||0));
+ $("salesReturnMax").textContent=item?item.remaining:0;
+ $("salesReturnValue").textContent=purMoney(item?qty*Number(item.unit_price):0);
+ $("salesReturnQty").max=item?item.remaining:1;
+ $("salesReturnRefund").max=purMoney(item?qty*Number(item.unit_price):0);
+}
+$("salesReturnItem").onchange=updateSalesReturnPreview;
+$("salesReturnQty").oninput=updateSalesReturnPreview;
+$("submitSalesReturnBtn").onclick=async()=>{
+ const item=salesReturnOptions.find(x=>x.id===value("salesReturnItem"));
+ const qty=Math.floor(Number(value("salesReturnQty"))||0),condition=value("salesReturnCondition");
+ const refund=Number(value("salesReturnRefund")),reason=value("salesReturnReason").trim();
+ if(!activeUser||activeUser.id!==ADMIN_UID||!item||qty<1||qty>item.remaining||!reason||!Number.isFinite(refund)||refund<0||refund>qty*Number(item.unit_price)){
+  say($("salesReturnStatus"),"Invoice item, সঠিক Quantity, Refund Amount ও Return Reason দিন।",true);return;
+ }
+ if(!confirm("Sales Return সংরক্ষণ করবেন? Quantity: "+qty+" · Condition: "+condition+" · Refund: ৳ "+purMoney(refund)))return;
+ $("submitSalesReturnBtn").disabled=true;
+ const {data,error}=await db.rpc("bmp_create_sales_return",{p_invoice_item_id:item.id,p_quantity:qty,p_condition:condition,p_refund_amount:refund,p_reason:reason});
+ $("submitSalesReturnBtn").disabled=false;
+ if(error){say($("salesReturnStatus"),"Return সংরক্ষণ হয়নি: "+error.message,true);return;}
+ say($("salesReturnStatus"),"Return সফল: "+data.return_number+" · Return Value ৳ "+purMoney(data.return_total)+" · Invoice Due ৳ "+purMoney(data.invoice_due));
+ $("salesReturnQty").value="1";$("salesReturnRefund").value="0";$("salesReturnReason").value="";
+ await loadSalesReturns();updateSalesReturnPreview();
+};
+$("refreshSalesReturnBtn").onclick=loadSalesReturns;
+$("salesReturnTab").onclick=async()=>{
+ ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule"].forEach(id=>$(id).hidden=true);
+ $("salesReturnModule").hidden=false;$("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;
+ ["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","customerDueTab"].forEach(id=>$(id).classList.remove("active"));
+ $("salesReturnTab").classList.add("active");await loadSalesReturns();
 };
 
 if(!window.supabase||!window.BMP_SUPABASE_URL||!window.BMP_SUPABASE_ANON_KEY||window.BMP_SUPABASE_ANON_KEY.startsWith("PASTE_")){say($("loginStatus"),"Supabase config পাওয়া যায়নি।",true);return;}
