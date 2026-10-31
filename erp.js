@@ -846,4 +846,54 @@ $("profitLossTab").onclick=async()=>{
 ["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","customerDueTab","salesReturnTab","purchaseReturnTab","employeesTab","attendanceTab","dueOverviewTab","accountsTab","payrollTab","permissionsTab"].forEach(id=>{const el=$(id);if(el)el.addEventListener("click",()=>{$("profitLossModule").hidden=true;});});
 $("profitLossMonth").value=new Date().toISOString().slice(0,7);
 
+
+async function loadFinancialReports(){
+ const month=value("financialReportMonth");if(!month){say($("financialReportStatus"),"Report Month নির্বাচন করুন।",true);return;}
+ const start=month+"-01",end=new Date(Number(month.slice(0,4)),Number(month.slice(5,7)),1).toISOString().slice(0,10),tsEnd=end+"T00:00:00";
+ $("financialReportRows").innerHTML='<tr><td colspan="3">Report তৈরি হচ্ছে...</td></tr>';
+ const requests=[
+  db.from("erp_sales_invoices").select("id,total,paid,due").gte("sale_date",start+"T00:00:00").lt("sale_date",tsEnd).neq("status","cancelled").limit(5000),
+  db.from("erp_purchase_invoices").select("total,paid,due").gte("purchase_date",start+"T00:00:00").lt("purchase_date",tsEnd).neq("status","cancelled").limit(5000),
+  db.from("erp_customer_payments").select("amount").gte("created_at",start+"T00:00:00").lt("created_at",tsEnd).limit(5000),
+  db.from("erp_supplier_payments").select("amount").gte("created_at",start+"T00:00:00").lt("created_at",tsEnd).limit(5000),
+  db.from("erp_sales_returns").select("return_total,refund_amount").gte("created_at",start+"T00:00:00").lt("created_at",tsEnd).limit(5000),
+  db.from("erp_purchase_returns").select("return_total").gte("created_at",start+"T00:00:00").lt("created_at",tsEnd).limit(5000),
+  db.from("erp_account_transactions").select("transaction_type,amount").gte("transaction_date",start).lt("transaction_date",end).limit(5000)
+ ];
+ const results=await Promise.all(requests),bad=results.find(x=>x.error);
+ if(bad){say($("financialReportStatus"),"Report load হয়নি: "+bad.error.message,true);return;}
+ const sum=(arr,key="amount")=>(arr||[]).reduce((n,x)=>n+Number(x[key]||0),0);
+ const [sales,purchases,collections,supplierPays,salesReturns,purchaseReturns,ledger]=results.map(x=>x.data||[]);
+ const values={
+  sales:sum(sales,"total"),purchase:sum(purchases,"total"),collections:sum(collections),
+  supplierPayments:sum(supplierPays),salesReturns:sum(salesReturns,"return_total"),
+  purchaseReturns:sum(purchaseReturns,"return_total"),
+  income:sum(ledger.filter(x=>x.transaction_type==="income")),
+  expense:sum(ledger.filter(x=>x.transaction_type==="expense"))
+ };
+ const fmt=payrollMoney;
+ $("frSales").textContent=fmt(values.sales);$("frPurchase").textContent=fmt(values.purchase);
+ $("frCollections").textContent=fmt(values.collections);$("frSupplierPayments").textContent=fmt(values.supplierPayments);
+ $("frSalesReturns").textContent=fmt(values.salesReturns);$("frPurchaseReturns").textContent=fmt(values.purchaseReturns);
+ $("frIncome").textContent=fmt(values.income);$("frExpense").textContent=fmt(values.expense);
+ const rows=[
+ ["Sales Invoices",sales.length,values.sales],["Purchase Invoices",purchases.length,values.purchase],
+ ["Customer Due Collections",collections.length,values.collections],["Supplier Due Payments",supplierPays.length,values.supplierPayments],
+ ["Sales Returns",salesReturns.length,values.salesReturns],["Purchase Returns",purchaseReturns.length,values.purchaseReturns],
+ ["Cashbook Income",ledger.filter(x=>x.transaction_type==="income").length,values.income],
+ ["Cashbook Expense",ledger.filter(x=>x.transaction_type==="expense").length,values.expense]
+ ];
+ $("financialReportRows").innerHTML=rows.map(r=>'<tr><td>'+safe(r[0])+'</td><td>'+r[1]+'</td><td>'+fmt(r[2])+'</td></tr>').join("");
+ say($("financialReportStatus"),"Financial Activity Report তৈরি হয়েছে: "+month+". "+(results.some(x=>(x.data||[]).length>=5000)?"কোনো তালিকা ৫,০০০ রেকর্ড সীমায় পৌঁছেছে।":""));
+}
+$("refreshFinancialReportsBtn").onclick=loadFinancialReports;$("financialReportMonth").onchange=loadFinancialReports;
+$("financialReportsTab").onclick=async()=>{
+ ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","employeeModule","attendanceModule","dueOverviewModule","accountsModule","payrollModule","permissionsModule","profitLossModule"].forEach(id=>{const el=$(id);if(el)el.hidden=true;});
+ $("customerModulePanel").hidden=true;$("customerFormPanel").hidden=true;$("financialReportsModule").hidden=false;
+ ["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","customerDueTab","salesReturnTab","purchaseReturnTab","employeesTab","attendanceTab","dueOverviewTab","accountsTab","payrollTab","permissionsTab","profitLossTab"].forEach(id=>{const el=$(id);if(el)el.classList.remove("active");});
+ $("financialReportsTab").classList.add("active");await loadFinancialReports();
+};
+["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","customerDueTab","salesReturnTab","purchaseReturnTab","employeesTab","attendanceTab","dueOverviewTab","accountsTab","payrollTab","permissionsTab","profitLossTab"].forEach(id=>{const el=$(id);if(el)el.addEventListener("click",()=>{$("financialReportsModule").hidden=true;});});
+$("financialReportMonth").value=new Date().toISOString().slice(0,7);
+
 })();
