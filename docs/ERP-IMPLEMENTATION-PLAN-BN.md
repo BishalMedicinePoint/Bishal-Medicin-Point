@@ -140,6 +140,16 @@ Implement all 30 modules requested by the owner. Preserve the current public med
 - Fields on Medicine Add: box price, strip price, per-tablet/per-unit price, purchase rate, sale price, MRP, units per strip, strips per box, and sale units allowed.
 - The Add form should preview calculated conversions (for example box → strip → tablet) and validate that quantities and prices are consistent. Batch-specific actual purchase cost and expiry remain recorded on the Batch/Purchase entry.
 
+## Customer Add form — confirmed fields
+
+- Keep the Customer Add screen focused on the owner's requested fields, in this order: Customer Name (required), Cell Number (required), Alt Cell, MID (optional), Reference Partner, Postal Address, Internal Notes, and Registration Date.
+- Generate a unique Customer ID automatically in the background; show it as a read-only field if useful, without replacing the requested MID field.
+- Validate required name and cell number; warn about possible duplicate cell numbers and allow authorized staff to review before creating a duplicate.
+- Registration Date should default to the current local date and remain editable by authorized staff.
+- Support Add, Save, Edit, and customer search; link customer records to invoices, purchase history, due balance, and payment ledger.
+- Reference Partner should link to an existing partner when available, with permission-controlled partner creation/management.
+- Do not make optional fields mandatory. Keep the form simple and quick for counter staff.
+
 ## Invoice paper-size selector and print layouts
 
 - On the POS invoice creation screen, show the paper-size selector before the invoice is generated/printed. Use **Auto Thermal (thermal receipt)** as the preselected default option.
