@@ -124,3 +124,12 @@ Implement all 30 modules requested by the owner. Preserve the current public med
 - Pricing inputs must be separate: purchase price, selling price/MRP, and pack price. Do not auto-fill shop stock from catalogue data.
 - Include searchable dropdowns with an option to add a new Group, Company, Dosage Form, and Generic where appropriate; validate duplicates before saving.
 - Keep the existing public medicines table and website compatible; implement schema changes additively and test the form before deployment.
+
+## Box/pack/unit pricing and quantity fields
+
+- The Add/Edit Medicine and Batch/Purchase forms must support box/pack price, per-tablet/per-capsule/per-unit price, purchase rate, and sale price as distinct values.
+- Capture units per box/pack (e.g. tablets per strip, strips per box) and the sale unit (box, strip, tablet, bottle, tube, etc.).
+- Allow separate purchase rates at box/pack and unit level where relevant, and separate sale prices at box/pack and unit level. Show MRP separately when provided.
+- Calculate derived unit rates only when pack conversion quantity is known; display the calculation and allow authorized users to review/override with validation. Avoid rounding errors in inventory and billing.
+- Track stock in a consistent base unit and convert box/strip/unit sales accurately; do not assume all medicines are sold by tablet.
+- Store actual purchase price by batch, because different batches may have different costs. Preserve historical batch cost and sale records.
