@@ -11,7 +11,7 @@
 <section id="loginPanel" class="panel login-panel"><p class="eyebrow">SECURE WORKSPACE</p><h1>ERP Login</h1><p>অনুমোদিত Super Admin অ্যাকাউন্ট দিয়ে প্রবেশ করুন।</p><form id="loginForm" class="form-grid"><label class="full">Email<input id="email" type="email" autocomplete="username" required></label><label class="full">Password<input id="password" type="password" autocomplete="current-password" required></label><div class="full"><button class="btn" type="submit">Login</button></div></form><p id="loginStatus" class="status" role="status"></p></section>
 <section id="workspace" hidden>
 <div class="welcome"><div><p class="eyebrow">MANAGEMENT WORKSPACE</p><h1>Pharmacy ERP</h1><p>প্রথম ধাপ: Customer Management</p></div><span class="secure">Super Admin access</span></div>
-<nav class="tabs" aria-label="ERP modules"><button class="tab active" id="customersTab" type="button">Customers</button><button class="tab" id="medicinesTab" type="button">Medicine Management</button><button class="tab" id="batchesTab" type="button">Batch &amp; Expiry</button><button class="tab" id="barcodeTab" type="button">Barcode Management</button><button class="tab" id="posTab" type="button">POS Sales &amp; Billing</button><button class="tab" id="purchaseTab" type="button">Purchase Management</button><button class="tab" id="stockTab" type="button">Stock Management</button><button class="tab" id="customerDueTab" type="button">Customer Due &amp; Payment</button></nav>
+<nav class="tabs" aria-label="ERP modules"><button class="tab active" id="customersTab" type="button">Customers</button><button class="tab" id="medicinesTab" type="button">Medicine Management</button><button class="tab" id="batchesTab" type="button">Batch &amp; Expiry</button><button class="tab" id="barcodeTab" type="button">Barcode Management</button><button class="tab" id="posTab" type="button">POS Sales &amp; Billing</button><button class="tab" id="purchaseTab" type="button">Purchase Management</button><button class="tab" id="stockTab" type="button">Stock Management</button><button class="tab" id="customerDueTab" type="button">Customer Due &amp; Payment</button><button class="tab" id="salesReturnTab" type="button">Sales Return</button></nav>
 <section class="panel">
 <div class="section-head"><div><h2>Customer Management</h2><p>কাস্টমার যোগ, খোঁজা ও তথ্য পরিবর্তন করুন।</p></div><button id="newCustomerBtn" class="btn" type="button">+ Add Customer</button></div>
 <div class="toolbar"><input id="searchInput" type="search" placeholder="নাম, Customer ID বা Mobile দিয়ে খুঁজুন"><select id="statusFilter"><option value="active">Active Customers</option><option value="inactive">Inactive Customers</option><option value="all">All Customers</option></select></div>
@@ -112,6 +112,18 @@
 <div class="full form-actions"><button id="recordCustomerPaymentBtn" class="btn" type="button">Collect Due Payment</button></div></div><p id="customerPaymentStatus" class="status"></p></div>
 <div class="panel inner-panel"><h3>Recent Customer Payments</h3><div class="table-wrap"><table><thead><tr><th>Date</th><th>Customer</th><th>Invoice</th><th>Amount</th><th>Method</th><th>Reference</th></tr></thead><tbody id="customerPaymentRows"></tbody></table></div></div>
 <div class="panel inner-panel"><h3>Outstanding Invoices</h3><div class="table-wrap"><table><thead><tr><th>Invoice</th><th>Date</th><th>Customer</th><th>Total</th><th>Paid</th><th>Due</th></tr></thead><tbody id="customerDueRows"></tbody></table></div></div>
+</section>
+<section id="salesReturnModule" class="panel" hidden>
+<div class="section-head"><div><h2>Sales Return Management</h2><p>মূল Invoice-এর বিক্রিত পণ্য ফেরত নিন; বিক্রিযোগ্য পণ্য Stock-এ ফিরবে, damaged পণ্য Stock-এ যোগ হবে না।</p></div><button id="refreshSalesReturnBtn" class="btn muted" type="button">Refresh</button></div>
+<div class="panel inner-panel"><h3>Process Sales Return</h3><div class="form-grid">
+<label class="full">Invoice Item<select id="salesReturnItem"><option value="">Invoice item নির্বাচন করুন</option></select></label>
+<label>Return Quantity<input id="salesReturnQty" type="number" min="1" step="1" value="1"></label>
+<label>Item Condition<select id="salesReturnCondition"><option value="saleable">Saleable - Stock-এ ফেরত</option><option value="damaged">Damaged - Quarantine/Stock-এর বাইরে</option></select></label>
+<label>Refund Amount (৳)<input id="salesReturnRefund" type="number" min="0" step="0.01" value="0"></label>
+<label class="full">Return Reason<input id="salesReturnReason" maxlength="300" placeholder="ফেরতের কারণ লিখুন"></label>
+<div class="full"><strong>Maximum Return Qty: <span id="salesReturnMax">0</span> · Return Value: ৳ <span id="salesReturnValue">0.00</span></strong></div>
+<div class="full form-actions"><button id="submitSalesReturnBtn" class="btn" type="button">Save Sales Return</button></div></div><p id="salesReturnStatus" class="status"></p></div>
+<div class="panel inner-panel"><h3>Recent Sales Returns</h3><div class="table-wrap"><table><thead><tr><th>Return No.</th><th>Date</th><th>Invoice</th><th>Customer</th><th>Value</th><th>Refund</th><th>Reason</th></tr></thead><tbody id="salesReturnRows"></tbody></table></div></div>
 </section>
 <section id="stockModule" class="panel" hidden>
 <div class="section-head"><div><h2>Stock Management</h2><p>Purchase ও POS থেকে আসা মজুত, কম স্টক, মেয়াদ এবং Stock movement দেখুন।</p></div><button id="refreshStockBtn" class="btn muted" type="button">Refresh Stock</button></div>
