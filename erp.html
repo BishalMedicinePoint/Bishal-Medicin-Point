@@ -11,7 +11,7 @@
 <section id="loginPanel" class="panel login-panel"><p class="eyebrow">SECURE WORKSPACE</p><h1>ERP Login</h1><p>অনুমোদিত Super Admin অ্যাকাউন্ট দিয়ে প্রবেশ করুন।</p><form id="loginForm" class="form-grid"><label class="full">Email<input id="email" type="email" autocomplete="username" required></label><label class="full">Password<input id="password" type="password" autocomplete="current-password" required></label><div class="full"><button class="btn" type="submit">Login</button></div></form><p id="loginStatus" class="status" role="status"></p></section>
 <section id="workspace" hidden>
 <div class="welcome"><div><p class="eyebrow">MANAGEMENT WORKSPACE</p><h1>Pharmacy ERP</h1><p>প্রথম ধাপ: Customer Management</p></div><span class="secure">Super Admin access</span></div>
-<nav class="tabs" aria-label="ERP modules"><button class="tab active" id="customersTab" type="button">Customers</button><button class="tab" id="medicinesTab" type="button">Medicine Management</button><button class="tab" id="batchesTab" type="button">Batch &amp; Expiry</button><button class="tab" id="barcodeTab" type="button">Barcode Management</button><button class="tab" id="posTab" type="button">POS Sales &amp; Billing</button><button class="tab" id="purchaseTab" type="button">Purchase Management</button><button class="tab" id="stockTab" type="button">Stock Management</button></nav>
+<nav class="tabs" aria-label="ERP modules"><button class="tab active" id="customersTab" type="button">Customers</button><button class="tab" id="medicinesTab" type="button">Medicine Management</button><button class="tab" id="batchesTab" type="button">Batch &amp; Expiry</button><button class="tab" id="barcodeTab" type="button">Barcode Management</button><button class="tab" id="posTab" type="button">POS Sales &amp; Billing</button><button class="tab" id="purchaseTab" type="button">Purchase Management</button><button class="tab" id="stockTab" type="button">Stock Management</button><button class="tab" id="customerDueTab" type="button">Customer Due &amp; Payment</button></nav>
 <section class="panel">
 <div class="section-head"><div><h2>Customer Management</h2><p>কাস্টমার যোগ, খোঁজা ও তথ্য পরিবর্তন করুন।</p></div><button id="newCustomerBtn" class="btn" type="button">+ Add Customer</button></div>
 <div class="toolbar"><input id="searchInput" type="search" placeholder="নাম, Customer ID বা Mobile দিয়ে খুঁজুন"><select id="statusFilter"><option value="active">Active Customers</option><option value="inactive">Inactive Customers</option><option value="all">All Customers</option></select></div>
@@ -99,6 +99,19 @@
 </div><p id="posStatus" class="status" role="status"></p></div>
 <section id="posReceiptPanel" class="panel inner-panel" hidden><div class="section-head"><div><h3>Invoice Receipt</h3><p id="posReceiptMeta"></p></div><button id="printPosReceiptBtn" class="btn" type="button">Print Receipt</button></div><div id="posReceiptContent"></div></section>
 <div class="panel inner-panel"><h3>Recent Invoices</h3><div class="table-wrap"><table><thead><tr><th>Invoice</th><th>Date</th><th>Customer</th><th>Total</th><th>Paid</th><th>Due</th></tr></thead><tbody id="posInvoiceRows"><tr><td colspan="6">Invoice list load হয়নি।</td></tr></tbody></table></div></div>
+</section>
+<section id="customerDueModule" class="panel" hidden>
+<div class="section-head"><div><h2>Customer Due &amp; Payment Collection</h2><p>বকেয়া Invoice থেকে আংশিক বা সম্পূর্ণ টাকা সংগ্রহ করুন।</p></div><button id="refreshCustomerDueBtn" class="btn muted" type="button">Refresh</button></div>
+<div class="stock-summary"><div class="stock-card"><small>Due Invoices</small><strong id="customerDueInvoiceCount">0</strong></div><div class="stock-card"><small>Total Due (৳)</small><strong id="customerDueTotal">0.00</strong></div></div>
+<div class="panel inner-panel"><h3>Collect Customer Due</h3><div class="form-grid">
+<label class="full">Due Invoice<select id="customerDueInvoice"><option value="">বকেয়া Invoice নির্বাচন করুন</option></select></label>
+<label>Payment Amount (৳)<input id="customerPaymentAmount" type="number" min="0.01" step="0.01" value="0"></label>
+<label>Payment Method<select id="customerPaymentMethod"><option value="cash">Cash</option><option value="bank">Bank</option><option value="mobile_banking">Mobile Banking</option><option value="card">Card</option><option value="other">Other</option></select></label>
+<label>Reference Number<input id="customerPaymentReference" maxlength="120"></label><label>Note<input id="customerPaymentNote" maxlength="300"></label>
+<div class="full"><strong>Selected Invoice Due: ৳ <span id="customerSelectedDue">0.00</span></strong></div>
+<div class="full form-actions"><button id="recordCustomerPaymentBtn" class="btn" type="button">Collect Due Payment</button></div></div><p id="customerPaymentStatus" class="status"></p></div>
+<div class="panel inner-panel"><h3>Recent Customer Payments</h3><div class="table-wrap"><table><thead><tr><th>Date</th><th>Customer</th><th>Invoice</th><th>Amount</th><th>Method</th><th>Reference</th></tr></thead><tbody id="customerPaymentRows"></tbody></table></div></div>
+<div class="panel inner-panel"><h3>Outstanding Invoices</h3><div class="table-wrap"><table><thead><tr><th>Invoice</th><th>Date</th><th>Customer</th><th>Total</th><th>Paid</th><th>Due</th></tr></thead><tbody id="customerDueRows"></tbody></table></div></div>
 </section>
 <section id="stockModule" class="panel" hidden>
 <div class="section-head"><div><h2>Stock Management</h2><p>Purchase ও POS থেকে আসা মজুত, কম স্টক, মেয়াদ এবং Stock movement দেখুন।</p></div><button id="refreshStockBtn" class="btn muted" type="button">Refresh Stock</button></div>
