@@ -100,3 +100,11 @@ Implement all 30 modules requested by the owner. Preserve the current public med
 - Catalogue sync must NOT increase shop stock. Stock changes only through a verified purchase/stock-receipt transaction entered by an authorized employee.
 - Do not treat catalogue prices as the shop's purchase cost or selling price. Shop prices, batches, expiry, and on-hand quantity remain controlled by the shop.
 - Current integration status: not connected. Public research did not establish an official/licensed MedEx API or permission for automated bulk reuse. Enable live sync only after the data provider confirms an authorized integration method and terms.
+
+## MedEx lookup without API (safe fallback)
+
+- Provide a MedEx Search / Open MedEx link in the medicine catalogue so staff can look up a medicine on the MedEx website in a new tab.
+- Provide a bulk medicine import screen for a CSV/Excel file that the shop owns or is authorized to use; validate columns, preview rows, detect duplicates, and require confirmation before import.
+- Do not scrape MedEx pages, automate browser extraction, or bulk-copy its database without MedEx permission. A public website link alone does not grant reuse rights.
+- Without an official API or authorized data export, automatic MedEx-to-ERP catalogue synchronization is not technically/legally available. The external lookup link and authorized file import are the supported no-API alternatives.
+- Imported catalogue data does not add stock; only a verified purchase/stock receipt changes on-hand quantity.
