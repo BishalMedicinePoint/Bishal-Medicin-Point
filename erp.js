@@ -118,8 +118,76 @@ $("medicineForm").onsubmit=async e=>{e.preventDefault();if(!activeUser||activeUs
 };
 $("newMedicineBtn").onclick=()=>openMedicine();$("closeMedicineForm").onclick=$("cancelMedicineForm").onclick=()=>{$("medicineFormPanel").hidden=true;};
 $("medicineSearch").oninput=loadMedicines;$("medicineStatus").onchange=loadMedicines;
-$("customersTab").onclick=()=>{$("medicineModule").hidden=true;$("newCustomerBtn").closest(".panel").hidden=false;$("customerFormPanel").hidden=true;$("customersTab").classList.add("active");$("medicinesTab").classList.remove("active");};
-$("medicinesTab").onclick=()=>{$("medicineModule").hidden=false;$("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;$("medicinesTab").classList.add("active");$("customersTab").classList.remove("active");loadMedicines();};
+$("customersTab").onclick=()=>{$("medicineModule").hidden=true;$("batchModule").hidden=true;$("newCustomerBtn").closest(".panel").hidden=false;$("customerFormPanel").hidden=true;$("customersTab").classList.add("active");$("medicinesTab").classList.remove("active");};
+$("medicinesTab").onclick=()=>{$("batchModule").hidden=true;$("medicineModule").hidden=false;$("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;$("medicinesTab").classList.add("active");$("customersTab").classList.remove("active");loadMedicines();};
+
+
+async function loadBatchMedicineOptions(selected=""){
+ const {data,error}=await db.from("erp_medicines").select("id,medicine_name,brand,strength").eq("is_active",true).order("medicine_name");
+ if(error){say($("batchStatusText"),"Medicine list আনা যায়নি: "+error.message,true);return;}
+ $("batchMedicine").innerHTML='<option value="">Medicine নির্বাচন করুন</option>'+(data||[]).map(m=>'<option value="'+safe(m.id)+'">'+safe(m.medicine_name)+(m.strength?" · "+safe(m.strength):"")+(m.brand?" · "+safe(m.brand):"")+'</option>').join("");
+ $("batchMedicine").value=selected;
+}
+async function loadBatches(){
+ const body=$("batchRows");if(!body)return;
+ body.innerHTML='<tr><td colspan="10">Batch list লোড হচ্ছে...</td></tr>';
+ const {data,error}=await db.from("erp_medicine_batches").select("*,erp_medicines(medicine_name,brand,strength)").order("expiry_date",{ascending:true});
+ if(error){body.innerHTML='<tr><td colspan="10">Batch list load হয়নি।</td></tr>';say($("batchStatusText"),"Batch list আনা যায়নি: "+error.message,true);return;}
+ const term=value("batchSearch").toLowerCase(), filter=$("batchExpiryFilter").value, now=today();
+ const edge=new Date();edge.setDate(edge.getDate()+90);const edgeDate=new Date(edge.getTime()-edge.getTimezoneOffset()*60000).toISOString().slice(0,10);
+ const rows=(data||[]).filter(b=>{
+  const name=b.erp_medicines?.medicine_name||"";
+  const matches=[name,b.batch_number,b.erp_medicines?.brand].some(v=>String(v||"").toLowerCase().includes(term));
+  const expiry=b.expiry_date<now;
+  return matches&&(filter==="all"||(filter==="expired"&&expiry)||(filter==="soon"&&!expiry&&b.expiry_date<=edgeDate));
+ });
+ if(!rows.length){body.innerHTML='<tr><td colspan="10">কোনো Batch পাওয়া যায়নি।</td></tr>';return;}
+ body.innerHTML=rows.map(b=>{
+  const expired=b.expiry_date<now, soon=!expired&&b.expiry_date<=edgeDate;
+  const label=expired?"Expired":soon?"Expiring Soon":b.is_active?"Active":"Inactive";
+  return '<tr><td><b>'+safe(b.erp_medicines?.medicine_name||"Unknown")+'</b></td><td>'+safe(b.batch_number)+'</td><td>'+safe(b.manufacturing_date||"—")+'</td><td>'+safe(b.expiry_date)+'</td><td>৳ '+money(b.purchase_price)+'</td><td>৳ '+money(b.mrp)+'</td><td>'+safe(b.quantity_received)+'</td><td>'+safe(b.quantity_available)+'</td><td><span class="pill '+(expired?"off":"")+'">'+label+'</span></td><td><button class="btn muted" data-bedit="'+safe(b.id)+'" type="button">Edit</button></td></tr>';
+ }).join("");
+ body.querySelectorAll("[data-bedit]").forEach(btn=>btn.onclick=()=>openBatch(rows.find(b=>b.id===btn.dataset.bedit)));
+}
+function openBatch(batch=null){
+ $("batchForm").reset();$("batchRecordId").value=batch?.id||"";
+ $("batchFormTitle").textContent=batch?"Edit Batch":"Add Batch";
+ $("batchReceived").value=today();$("batchQuantity").value="0";
+ $("batchMedicine").disabled=false;$("batchQuantity").disabled=false;$("batchQuantityNote").hidden=true;
+ loadBatchMedicineOptions(batch?.medicine_id||"").then(()=>{
+  if(batch){$("batchMedicine").disabled=true;$("batchQuantity").value=batch.quantity_received;$("batchQuantity").disabled=true;$("batchQuantityNote").hidden=false;}
+ });
+ const fields={batchNumber:"batch_number",batchMfg:"manufacturing_date",batchExpiry:"expiry_date",batchReceived:"received_date",batchPurchasePrice:"purchase_price",batchMrp:"mrp",batchSupplier:"supplier_name",batchNotes:"notes"};
+ if(batch)Object.entries(fields).forEach(([a,b])=>$(a).value=batch[b]??"");
+ $("batchFormPanel").hidden=false;$("batchFormPanel").scrollIntoView({behavior:"smooth",block:"start"});
+}
+$("batchForm").onsubmit=async e=>{
+ e.preventDefault();if(!activeUser||activeUser.id!==ADMIN_UID)return;
+ const medicineId=value("batchMedicine"),batchNumber=value("batchNumber"),expiry=value("batchExpiry"),mfg=value("batchMfg"),qty=Number(value("batchQuantity"));
+ if(!medicineId||!batchNumber||!expiry||!value("batchReceived")){say($("batchStatusText"),"Medicine, Batch Number, Expiry ও Received Date আবশ্যক।",true);return;}
+ if(mfg&&expiry<=mfg){say($("batchStatusText"),"Expiry Date অবশ্যই Manufacturing Date-এর পরে হতে হবে।",true);return;}
+ if(!Number.isInteger(qty)||qty<0){say($("batchStatusText"),"Quantity শূন্য বা ধনাত্মক পূর্ণসংখ্যা হতে হবে।",true);return;}
+ const id=value("batchRecordId");
+ const payload={medicine_id:medicineId,batch_number:batchNumber,manufacturing_date:mfg||null,expiry_date:expiry,received_date:value("batchReceived"),purchase_price:Number(value("batchPurchasePrice")||0),mrp:Number(value("batchMrp")||0),supplier_name:value("batchSupplier")||null,notes:value("batchNotes")||null};
+ if(payload.purchase_price<0||payload.mrp<0){say($("batchStatusText"),"Price ঋণাত্মক হতে পারবে না।",true);return;}
+ say($("batchStatusText"),"Batch সংরক্ষণ হচ্ছে...");
+ let result;
+ if(id) result=await db.from("erp_medicine_batches").update(payload).eq("id",id);
+ else {payload.quantity_received=qty;payload.quantity_available=qty;payload.created_by=activeUser.id;result=await db.from("erp_medicine_batches").insert(payload);}
+ if(result.error){say($("batchStatusText"),"Batch সংরক্ষণ হয়নি: "+result.error.message,true);return;}
+ $("batchFormPanel").hidden=true;$("batchMedicine").disabled=false;$("batchQuantity").disabled=false;
+ say($("batchStatusText"),id?"Batch-এর তথ্য আপডেট হয়েছে। Quantity অপরিবর্তিত আছে।":"Batch যোগ হয়েছে। প্রাথমিক Available Quantity সেট হয়েছে।");
+ await loadBatches();
+};
+$("newBatchBtn").onclick=()=>openBatch();
+$("closeBatchForm").onclick=$("cancelBatchForm").onclick=()=>{$("batchFormPanel").hidden=true;$("batchMedicine").disabled=false;$("batchQuantity").disabled=false;};
+$("batchSearch").oninput=loadBatches;$("batchExpiryFilter").onchange=loadBatches;
+$("batchesTab").onclick=()=>{
+ $("medicineModule").hidden=true;$("batchModule").hidden=false;
+ $("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;
+ $("batchesTab").classList.add("active");$("customersTab").classList.remove("active");$("medicinesTab").classList.remove("active");
+ loadBatches();
+};
 
 if(!window.supabase||!window.BMP_SUPABASE_URL||!window.BMP_SUPABASE_ANON_KEY||window.BMP_SUPABASE_ANON_KEY.startsWith("PASTE_")){say($("loginStatus"),"Supabase config পাওয়া যায়নি।",true);return;}
 db=window.supabase.createClient(window.BMP_SUPABASE_URL,window.BMP_SUPABASE_ANON_KEY);
