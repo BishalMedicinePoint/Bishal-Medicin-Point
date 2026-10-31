@@ -583,6 +583,6 @@ $("attendanceTab").onclick=async()=>{
 const attendanceToday=new Date().toISOString().slice(0,10);
 $("attendanceDate").value=attendanceToday;
 const monthNow=attendanceToday.slice(0,7);
-$("attendanceMonth").innerHTML='<option value="'+monthNow+'">'+monthNow+'</option>';
+$("attendanceMonth").value=monthNow;
 
 })();
