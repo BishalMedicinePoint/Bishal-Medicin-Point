@@ -116,3 +116,11 @@ Implement all 30 modules requested by the owner. Preserve the current public med
 - Store price fields separately and explicitly: source/reference price (only when supplied by an authorized source), shop purchase price, shop selling price/MRP, and pack price. Never assume an external listed price is the shop's current buying cost.
 - Provide image URL/upload fields only for images the shop owns or is authorized to use. Do not copy MedEx images or catalogue data in bulk without permission.
 - Provide search/filter by name, generic, group/category, company, dosage form, and pack size.
+
+## Medicine Add/Edit form requirements
+
+- The Add Medicine and Edit Medicine forms must expose the catalogue fields directly; these are not just list/report fields.
+- Required/available fields: Medicine/Product Name, Generic Name, Brand, Group/Therapeutic Category, dosage form (tablet, capsule, syrup, drop, injection, cream, ointment, gel, shampoo, lotion, powder, etc.), strength, pack size/pack description, manufacturer/company, barcode, product image upload/preview, description, and status.
+- Pricing inputs must be separate: purchase price, selling price/MRP, and pack price. Do not auto-fill shop stock from catalogue data.
+- Include searchable dropdowns with an option to add a new Group, Company, Dosage Form, and Generic where appropriate; validate duplicates before saving.
+- Keep the existing public medicines table and website compatible; implement schema changes additively and test the form before deployment.
