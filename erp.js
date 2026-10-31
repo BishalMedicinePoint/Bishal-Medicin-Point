@@ -1099,12 +1099,12 @@ document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="dashboardTab")t.addEven
   if(!ready)return;
   const {data,error}=await client.from("erp_branches").select("branch_code,branch_name,phone,address,is_active").order("created_at");
   if(error){$("branchStatus").textContent=error.message;return;}
-  $("branchRows").innerHTML=data.length?data.map(x=>'<tr><td>'+esc(x.branch_name)+'</td><td>'+esc(x.branch_code)+'</td><td>'+esc(x.phone)+'</td><td>'+esc(x.address)+'</td></tr>').join(""):'<tr><td colspan="4">No branch added.</td></tr>';
+  $("branchRows").innerHTML=data.length?data.map(x=>'<tr><td>'+esc(x.branch_name)+'</td><td>'+esc(x.branch_code)+'</td><td>'+esc(x.phone||"")+'</td><td>'+esc(x.address||"")+'</td><td>'+ (x.is_active?'Active':'Inactive') +'</td></tr>').join(""):'<tr><td colspan="5">No branch added.</td></tr>';
  }
  $("branchForm").addEventListener("submit",async e=>{
   e.preventDefault();if(!ready){$("branchStatus").textContent="Admin Supabase session নেই; cloud save হয়নি।";return;}
-  const row={branch_name:$("branchName").value.trim(),branch_code:$("branchCode").value.trim(),phone:$("branchPhone").value.trim(),address:$("branchAddress").value.trim(),created_by:adminId};
-  const {error}=await client.from("erp_branches").insert(row);
+  const name=$("branchName").value.trim(),code=$("branchCode").value.trim(),phone=$("branchPhone").value.trim(),address=$("branchAddress").value.trim();
+  const {data,error}=await client.rpc("bmp_save_branch",{p_branch_name:name,p_branch_code:code,p_phone:phone,p_address:address});
   $("branchStatus").textContent=error?"Branch save failed: "+error.message:"Branch Supabase-এ সংরক্ষিত হয়েছে।";if(!error){e.target.reset();await renderBranches();}
  });
  async function renderLog(){
