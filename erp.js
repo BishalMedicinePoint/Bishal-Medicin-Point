@@ -650,4 +650,7 @@ $("permissionsTab").onclick=async()=>{
  $("permissionsTab").classList.add("active");await loadPermissionEmployees();await loadEmployeePermissions();
 };
 
+
+["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","customerDueTab","salesReturnTab","purchaseReturnTab","employeesTab","attendanceTab"].forEach(id=>{const tab=$(id);if(tab)tab.addEventListener("click",()=>{$("permissionsModule").hidden=true;});});
+
 })();
