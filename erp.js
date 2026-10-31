@@ -92,6 +92,35 @@ async function verifyUser(user){
  activeUser=user;$("loginPanel").hidden=true;$("workspace").hidden=false;$("logoutBtn").hidden=false;await loadCustomers();
 }
 $("logoutBtn").onclick=async()=>{await db.auth.signOut();activeUser=null;$("workspace").hidden=true;$("loginPanel").hidden=false;$("logoutBtn").hidden=true;};
+
+async function loadMedicines(){
+ const body=$("medicineRows");if(!body)return;body.innerHTML='<tr><td colspan="9">তথ্য লোড হচ্ছে...</td></tr>';
+ let q=db.from("erp_medicines").select("*").order("created_at",{ascending:false});
+ const s=$("medicineStatus").value;if(s==="active")q=q.eq("is_active",true);if(s==="inactive")q=q.eq("is_active",false);
+ const {data,error}=await q;if(error){body.innerHTML='<tr><td colspan="9">Medicine list load হয়নি।</td></tr>';say($("medicineStatusText"),"Database migration চালু না থাকলে এই তালিকা লোড হবে না: "+error.message,true);return;}
+ const term=$("medicineSearch").value.trim().toLowerCase();
+ const rows=(data||[]).filter(m=>[m.medicine_name,m.generic_name,m.brand,m.manufacturer,m.barcode].some(v=>String(v||"").toLowerCase().includes(term)));
+ body.innerHTML=rows.length?rows.map(m=>`<tr><td><b>${safe(m.medicine_name)}</b></td><td>${safe(m.generic_name||"—")}</td><td>${safe(m.strength||"—")} / ${safe(m.dosage_form||"—")}</td><td>${safe(m.manufacturer||"—")}</td><td>${safe(m.barcode||"—")}</td><td>৳ ${money(m.purchase_price)}</td><td>৳ ${money(m.selling_price)} / ${money(m.mrp)}</td><td>${m.is_active?"Active":"Inactive"}</td><td><button class="btn muted" data-medit="${safe(m.id)}" type="button">Edit</button></td></tr>`).join(""):'<tr><td colspan="9">কোনো Medicine পাওয়া যায়নি।</td></tr>';
+ body.querySelectorAll("[data-medit]").forEach(b=>b.onclick=()=>openMedicine(data.find(m=>m.id===b.dataset.medit)));
+}
+function openMedicine(m=null){
+ $("medicineForm").reset();$("medicineRecordId").value=m?.id||"";$("medicineFormTitle").textContent=m?"Edit Medicine":"Add Medicine";
+ const fields={medicineName:"medicine_name",genericName:"generic_name",brandName:"brand",medicineGroup:"therapeutic_group",dosageForm:"dosage_form",medicineStrength:"strength",packSize:"pack_size",manufacturer:"manufacturer",barcode:"barcode",purchasePrice:"purchase_price",sellingPrice:"selling_price",mrp:"mrp",boxPrice:"box_price",stripPrice:"strip_price",unitPrice:"unit_price",unitsPerStrip:"units_per_strip",stripsPerBox:"strips_per_box",saleUnitsAllowed:"sale_units_allowed",medicineDescription:"description"};
+ if(m)Object.entries(fields).forEach(([a,b])=>$(a).value=m[b]??"");$("medicineActive").value=String(m?.is_active??true);$("medicineFormPanel").hidden=false;$("medicineFormPanel").scrollIntoView({behavior:"smooth"});
+}
+$("medicineForm").onsubmit=async e=>{e.preventDefault();if(!activeUser||activeUser.id!==ADMIN_UID)return;
+ const n=Number(id=>$(id).value||0);const payload={medicine_name:value("medicineName"),generic_name:value("genericName")||null,brand:value("brandName")||null,therapeutic_group:value("medicineGroup")||null,dosage_form:value("dosageForm"),strength:value("medicineStrength")||null,pack_size:value("packSize")||null,manufacturer:value("manufacturer")||null,barcode:value("barcode")||null,purchase_price:n("purchasePrice"),selling_price:n("sellingPrice"),mrp:n("mrp"),box_price:n("boxPrice"),strip_price:n("stripPrice"),unit_price:n("unitPrice"),units_per_strip:n("unitsPerStrip"),strips_per_box:n("stripsPerBox"),sale_units_allowed:value("saleUnitsAllowed")||null,description:value("medicineDescription")||null,is_active:$("medicineActive").value==="true"};
+ if([payload.purchase_price,payload.selling_price,payload.mrp,payload.box_price,payload.strip_price,payload.unit_price,payload.units_per_strip,payload.strips_per_box].some(v=>v<0)){say($("medicineStatusText"),"Price ও conversion quantity ঋণাত্মক হতে পারবে না।",true);return;}
+ say($("medicineStatusText"),"Medicine সংরক্ষণ হচ্ছে...");
+ const id=value("medicineRecordId");const res=id?await db.from("erp_medicines").update(payload).eq("id",id):await db.from("erp_medicines").insert(payload);
+ if(res.error){say($("medicineStatusText"),"সংরক্ষণ হয়নি: "+res.error.message,true);return;}
+ $("medicineFormPanel").hidden=true;say($("medicineStatusText"),"Medicine সংরক্ষণ হয়েছে। Stock পরিবর্তন হয়নি।");await loadMedicines();
+};
+$("newMedicineBtn").onclick=()=>openMedicine();$("closeMedicineForm").onclick=$("cancelMedicineForm").onclick=()=>{$("medicineFormPanel").hidden=true;};
+$("medicineSearch").oninput=loadMedicines;$("medicineStatus").onchange=loadMedicines;
+$("customersTab").onclick=()=>{$("medicineModule").hidden=true;$("newCustomerBtn").closest(".panel").hidden=false;$("customerFormPanel").hidden=true;$("customersTab").classList.add("active");$("medicinesTab").classList.remove("active");};
+$("medicinesTab").onclick=()=>{$("medicineModule").hidden=false;$("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;$("medicinesTab").classList.add("active");$("customersTab").classList.remove("active");loadMedicines();};
+
 if(!window.supabase||!window.BMP_SUPABASE_URL||!window.BMP_SUPABASE_ANON_KEY||window.BMP_SUPABASE_ANON_KEY.startsWith("PASTE_")){say($("loginStatus"),"Supabase config পাওয়া যায়নি।",true);return;}
 db=window.supabase.createClient(window.BMP_SUPABASE_URL,window.BMP_SUPABASE_ANON_KEY);
 db.auth.getSession().then(({data})=>{if(data.session)verifyUser(data.session.user);});
