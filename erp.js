@@ -805,4 +805,45 @@ $("dueOverviewTab").onclick=async()=>{
 };
 ["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","customerDueTab","salesReturnTab","purchaseReturnTab","employeesTab","attendanceTab","permissionsTab","payrollTab","accountsTab"].forEach(id=>{const tab=$(id);if(tab)tab.addEventListener("click",()=>{$("dueOverviewModule").hidden=true;});});
 
+
+async function loadProfitLoss(){
+ const month=value("profitLossMonth");if(!month){say($("profitLossStatus"),"Report Month নির্বাচন করুন।",true);return;}
+ const start=month+"-01",end=new Date(Number(month.slice(0,4)),Number(month.slice(5,7)),1).toISOString().slice(0,10);
+ $("profitLossRows").innerHTML='<tr><td colspan="2">হিসাব করা হচ্ছে...</td></tr>';
+ const [sales,returns,expenses,payroll]=await Promise.all([
+  db.from("erp_sales_invoices").select("id,total").gte("sale_date",start).lt("sale_date",end+"T00:00:00").neq("status","cancelled").limit(5000),
+  db.from("erp_sales_returns").select("return_total").gte("created_at",start+"T00:00:00").lt("created_at",end+"T00:00:00").limit(5000),
+  db.from("erp_account_transactions").select("amount").eq("transaction_type","expense").gte("transaction_date",start).lt("transaction_date",end).limit(5000),
+  db.from("erp_employee_payroll").select("net_salary").eq("payment_status","paid").gte("paid_date",start).lt("paid_date",end).limit(5000)
+ ]);
+ const err=[sales,returns,expenses,payroll].find(x=>x.error);
+ if(err){say($("profitLossStatus"),"Report load হয়নি: "+err.error.message,true);return;}
+ const ids=(sales.data||[]).map(x=>x.id);let cogs=0;
+ if(ids.length){
+  const lines=await db.from("erp_sales_invoice_items").select("quantity,purchase_price").in("invoice_id",ids).limit(20000);
+  if(lines.error){say($("profitLossStatus"),"COGS হিসাব হয়নি: "+lines.error.message,true);return;}
+  cogs=(lines.data||[]).reduce((sum,x)=>sum+Number(x.quantity||0)*Number(x.purchase_price||0),0);
+ }
+ const grossSales=(sales.data||[]).reduce((s,x)=>s+Number(x.total||0),0);
+ const returnTotal=(returns.data||[]).reduce((s,x)=>s+Number(x.return_total||0),0);
+ const netSales=grossSales-returnTotal,expenseTotal=(expenses.data||[]).reduce((s,x)=>s+Number(x.amount||0),0);
+ const payrollTotal=(payroll.data||[]).reduce((s,x)=>s+Number(x.net_salary||0),0);
+ const grossProfit=netSales-cogs,netProfit=grossProfit-expenseTotal-payrollTotal;
+ const fmt=n=>payrollMoney(n);
+ $("plNetSales").textContent=fmt(netSales);$("plCogs").textContent=fmt(cogs);$("plGrossProfit").textContent=fmt(grossProfit);
+ $("plExpenses").textContent=fmt(expenseTotal);$("plPayroll").textContent=fmt(payrollTotal);$("plNetProfit").textContent=fmt(netProfit);
+ const rows=[["Gross Sales",grossSales],["Sales Returns",returnTotal],["Net Sales",netSales],["Cost of Goods Sold",cogs],["Gross Profit",grossProfit],["Operating Expenses (Accounts)",expenseTotal],["Paid Payroll",payrollTotal],["Estimated Net Profit",netProfit]];
+ $("profitLossRows").innerHTML=rows.map(x=>'<tr><td>'+safe(x[0])+'</td><td>'+fmt(x[1])+'</td></tr>').join("");
+ say($("profitLossStatus"),"Report তৈরি হয়েছে: "+month+". "+(ids.length>=5000?"সতর্কতা: Sales record limit-এ পৌঁছেছে। ":"")+"COGS-এর জন্য invoice item-এ সংরক্ষিত purchase price ব্যবহার হয়েছে।");
+}
+$("refreshProfitLossBtn").onclick=loadProfitLoss;$("profitLossMonth").onchange=loadProfitLoss;
+$("profitLossTab").onclick=async()=>{
+ ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","employeeModule","attendanceModule","dueOverviewModule","accountsModule","payrollModule","permissionsModule"].forEach(id=>{const el=$(id);if(el)el.hidden=true;});
+ $("customerModulePanel").hidden=true;$("customerFormPanel").hidden=true;$("profitLossModule").hidden=false;
+ ["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","customerDueTab","salesReturnTab","purchaseReturnTab","employeesTab","attendanceTab","dueOverviewTab","accountsTab","payrollTab","permissionsTab"].forEach(id=>{const el=$(id);if(el)el.classList.remove("active");});
+ $("profitLossTab").classList.add("active");await loadProfitLoss();
+};
+["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","customerDueTab","salesReturnTab","purchaseReturnTab","employeesTab","attendanceTab","dueOverviewTab","accountsTab","payrollTab","permissionsTab"].forEach(id=>{const el=$(id);if(el)el.addEventListener("click",()=>{$("profitLossModule").hidden=true;});});
+$("profitLossMonth").value=new Date().toISOString().slice(0,7);
+
 })();
