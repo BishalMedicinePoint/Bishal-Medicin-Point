@@ -45,6 +45,7 @@ Implement all 30 modules requested by the owner. Preserve the current public med
 28. Online Order — order and delivery workflow.
 29. Backup & Restore — controlled database backup/restore.
 30. Activity Log & Security — actor, timestamp, action, audit history.
+31. Photo Management (separate menu/module) — upload, preview, change, and remove photos for employee profiles, medicines, customers, suppliers, and the shop logo; manage image files in secure storage and link them to the correct records. Access is controlled by individual permissions.
 
 ## Delivery sequence
 
@@ -72,6 +73,7 @@ Implement all 30 modules requested by the owner. Preserve the current public med
 
 ### Phase 5 — reports and operations
 - Dashboard, reports, PDF/Excel, settings, branch management, audit log, backup workflow.
+- Build Photo Management as its own menu/module, separate from Employee Management and Medicine Management. Existing medicine photo upload remains supported; the new module provides a central place to manage linked photos.
 
 ### Phase 6 — online and hardware
 - Online ordering/delivery; barcode scanner and receipt printer compatibility.
@@ -84,5 +86,5 @@ Implement all 30 modules requested by the owner. Preserve the current public med
 - Every sensitive operation must be checked server-side/database-side.
 - Financial and inventory operations must be transactional and auditable.
 - Test with separate Super Admin, Manager, Pharmacist, Sales Staff, Accountant, and restricted employee accounts.
-- Test unauthorized reads/writes, branch isolation, stock race conditions, returns, and backup restore before production.
+- Test unauthorized reads/writes, branch isolation, stock race conditions, returns, photo upload limits/file types, storage access, and backup restore before production.
 - Do not apply SQL migrations to production until reviewed and explicitly approved.
