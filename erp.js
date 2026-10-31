@@ -601,4 +601,53 @@ $("attendanceDate").value=attendanceToday;
 const monthNow=attendanceToday.slice(0,7);
 $("attendanceMonth").value=monthNow;
 
+
+const permissionModules=[
+ ["customers","Customers"],["medicines","Medicine Management"],["batches","Batch & Expiry"],["barcode","Barcode Management"],["pos","POS Sales & Billing"],["purchases","Purchase Management"],["stock","Stock Management"],["customer_due","Customer Due & Payment"],["sales_returns","Sales Return"],["purchase_returns","Purchase Return"],["employees","Employee Management"],["attendance","Attendance"]
+];
+const permissionActions=["view","create","update","delete","approve","print"];
+async function loadPermissionEmployees(){
+ const {data,error}=await db.from("erp_employees").select("id,employee_code,full_name").order("full_name");
+ if(error){say($("permissionStatus"),"Employee list load হয়নি: "+error.message,true);return;}
+ const selected=value("permissionEmployee");
+ $("permissionEmployee").innerHTML='<option value="">Employee নির্বাচন করুন</option>'+(data||[]).map(e=>'<option value="'+e.id+'">'+safe(e.employee_code)+' · '+safe(e.full_name)+'</option>').join("");
+ if(selected&&data.some(e=>e.id===selected))$("permissionEmployee").value=selected;
+}
+function renderPermissionRows(saved=[]){
+ const map=new Map(saved.map(p=>[p.module_key,p]));
+ $("permissionRows").innerHTML=permissionModules.map(([key,label])=>{
+  const p=map.get(key)||{};
+  return '<tr><td>'+safe(label)+'</td>'+permissionActions.map(action=>'<td><input type="checkbox" class="permission-check" data-module="'+key+'" data-action="'+action+'" '+(p["can_"+action]?'checked':'')+' aria-label="'+safe(label)+' '+action+'"></td>').join("")+'</tr>';
+ }).join("");
+}
+async function loadEmployeePermissions(){
+ const employee=value("permissionEmployee");
+ if(!employee){$("permissionRows").innerHTML='<tr><td colspan="7">প্রথমে Employee নির্বাচন করুন।</td></tr>';return;}
+ const {data,error}=await db.from("erp_employee_permissions").select("*").eq("employee_id",employee);
+ if(error){say($("permissionStatus"),"Permission load হয়নি: "+error.message,true);return;}
+ renderPermissionRows(data||[]);say($("permissionStatus"),"Saved permission লোড হয়েছে।");
+}
+$("permissionEmployee").onchange=loadEmployeePermissions;
+$("refreshPermissionsBtn").onclick=async()=>{await loadPermissionEmployees();await loadEmployeePermissions();};
+$("savePermissionsBtn").onclick=async()=>{
+ if(!activeUser||activeUser.id!==ADMIN_UID){say($("permissionStatus"),"শুধু Super Admin অনুমতি পরিবর্তন করতে পারবেন।",true);return;}
+ const employee=value("permissionEmployee");if(!employee){say($("permissionStatus"),"একজন Employee নির্বাচন করুন।",true);return;}
+ const rows=permissionModules.map(([module_key])=>{
+  const row={employee_id:employee,module_key,updated_by:activeUser.id};
+  permissionActions.forEach(action=>{const el=document.querySelector('.permission-check[data-module="'+module_key+'"][data-action="'+action+'"]');row["can_"+action]=!!el?.checked;});
+  return row;
+ });
+ $("savePermissionsBtn").disabled=true;
+ const {error}=await db.from("erp_employee_permissions").upsert(rows,{onConflict:"employee_id,module_key"});
+ $("savePermissionsBtn").disabled=false;
+ if(error){say($("permissionStatus"),"Permission সংরক্ষণ হয়নি: "+error.message,true);return;}
+ say($("permissionStatus"),"এই Employee-এর সব Module Permission সংরক্ষণ হয়েছে।");
+};
+$("permissionsTab").onclick=async()=>{
+ ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","employeeModule","attendanceModule"].forEach(id=>{const el=$(id);if(el)el.hidden=true;});
+ $("customerModulePanel").hidden=true;$("customerFormPanel").hidden=true;$("permissionsModule").hidden=false;
+ ["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","customerDueTab","salesReturnTab","purchaseReturnTab","employeesTab","attendanceTab"].forEach(id=>$(id).classList.remove("active"));
+ $("permissionsTab").classList.add("active");await loadPermissionEmployees();await loadEmployeePermissions();
+};
+
 })();
