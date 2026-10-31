@@ -39,11 +39,11 @@ Implement all 30 modules requested by the owner. Preserve the current public med
 22. Employee Reports — sales, attendance, salary.
 23. PDF / Excel Export — report export and print.
 24. Invoice Settings — layout, numbering, header/footer, paper size.
-25. Shop Settings — shop name, logo, address, phone.
+25. Shop Settings — shop name/name change, logo, address, phone, email, receipt details; Super Admin can update the displayed shop name.
 26. Multiple Branch — branch-scoped stock, sales, accounts.
 27. Online Website — medicine search, price, image, shop information.
 28. Online Order — order and delivery workflow.
-29. Backup & Restore — controlled database backup/restore.
+29. Backup & Restore — manual backup, restore from a verified backup, scheduled automatic backups, backup history/status, and restore confirmation; access restricted to Super Admin.
 30. Activity Log & Security — actor, timestamp, action, audit history.
 31. Photo Management (separate menu/module) — upload, preview, change, and remove photos for employee profiles, medicines, customers, suppliers, and the shop logo; manage image files in secure storage and link them to the correct records. Access is controlled by individual permissions.
 
@@ -73,6 +73,8 @@ Implement all 30 modules requested by the owner. Preserve the current public med
 
 ### Phase 5 — reports and operations
 - Dashboard, reports, PDF/Excel, settings, branch management, audit log, backup workflow.
+- Shop name and business details can be changed from Shop Settings without editing source code.
+- Implement scheduled automatic backups plus manual backup and carefully confirmed restore. Show last backup time and backup status; protect backup files and restrict restore to Super Admin.
 - Build Photo Management as its own menu/module, separate from Employee Management and Medicine Management. Existing medicine photo upload remains supported; the new module provides a central place to manage linked photos.
 
 ### Phase 6 — online and hardware
@@ -86,5 +88,5 @@ Implement all 30 modules requested by the owner. Preserve the current public med
 - Every sensitive operation must be checked server-side/database-side.
 - Financial and inventory operations must be transactional and auditable.
 - Test with separate Super Admin, Manager, Pharmacist, Sales Staff, Accountant, and restricted employee accounts.
-- Test unauthorized reads/writes, branch isolation, stock race conditions, returns, photo upload limits/file types, storage access, and backup restore before production.
+- Test unauthorized reads/writes, branch isolation, stock race conditions, returns, photo upload limits/file types, storage access, scheduled backup completion, backup integrity, and restore on a test environment before production.
 - Do not apply SQL migrations to production until reviewed and explicitly approved.
