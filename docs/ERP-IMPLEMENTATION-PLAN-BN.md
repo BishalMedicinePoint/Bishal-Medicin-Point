@@ -191,3 +191,12 @@ Implement all 30 modules requested by the owner. Preserve the current public med
 - Provide print, PDF, and Excel export, subject to the employee's report/export permissions.
 - Exclude cancelled/voided sales from net sales; show returns and discounts transparently and prevent double counting.
 - Restrict staff sales, attendance, and payroll-related information to authorized roles; enforce access in database/server logic, not only by hiding report menus.
+
+## Invoice edit, sales return, and receipt options — confirmed requirement
+
+- After an invoice is saved, authorized staff must be able to open it from invoice history and use **Edit Invoice**, **Sales Return**, and **Print / Reprint Receipt** actions according to their individual permissions.
+- **Edit Invoice:** allow only permitted corrections; require a reason, record the editor and timestamp, and preserve the original invoice values in an immutable revision/audit history. Recalculate totals and stock/payment effects transactionally. Do not silently overwrite or erase the original financial record. For posted/paid invoices, use a controlled adjustment or reversal workflow where direct editing would compromise the ledger.
+- **Sales Return:** support full and partial returns against the original invoice and its exact medicine batch/line items. Require returned quantity and reason; prevent returning more than the remaining unreturned quantity. Record whether returned goods are saleable or damaged/expired; only saleable goods may be added back to available stock, while damaged/expired goods go to a separate quarantine/damage stock status. Post refund, customer-credit, or due adjustment as a linked transaction with authorization and audit history.
+- **Print / Reprint Receipt:** allow receipt preview, print, and reprint from invoice history. Reprints must retain the same invoice number and show a clear reprint indicator/time; reprinting must never create a new sale, payment, or stock movement.
+- Invoice history must show original invoice, edits/revisions, linked returns, refunds/credits, and receipt reprints in chronological order.
+- Enforce separate permissions for invoice edit, sales return approval, refund/credit posting, and receipt printing/reprinting. All financial and stock effects must be atomic, auditable, and tested before production deployment.
