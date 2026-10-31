@@ -407,7 +407,7 @@ function resetEmployeeForm(){
  $("employeeFormTitle").textContent="Add Employee";
 }
 function openEmployeeForm(row=null){
- resetEmployeeForm();$("employeeFormPanel").hidden=false;
+ resetEmployeeForm();$("employeeFormPanel").hidden=false;$("linkEmployeeAccountBtn").disabled=!row;say($("employeeLoginStatus"),"");
  if(row){
   $("employeeFormTitle").textContent="Edit Employee";$("employeeRecordId").value=row.id;$("employeeCode").value=row.employee_code;
   const map={employeeName:"full_name",employeeMobile:"mobile_number",employeeAltPhone:"alternative_phone",employeeEmail:"email",employeeJobTitle:"job_title",employeeDepartment:"department",employeeAddress:"address",employeeEmergencyName:"emergency_contact_name",employeeEmergencyPhone:"emergency_contact_phone",employeeJoiningDate:"joining_date",employeeEmploymentStatus:"employment_status",employeeNotes:"notes",employeeLoginEmail:"login_email"};
