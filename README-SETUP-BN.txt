@@ -18,3 +18,21 @@ BISHAL MEDICINE POINT - ADMIN PANEL UPDATE
 - Admin email: mdmeharajh9@gmail.com
 - SQL table, RLS policies এবং medicine-images bucket আগেই তৈরি করা আছে বলে ধরা হয়েছে।
 - ওষুধের নাম, ছবি, strength, প্যাক সাইজ ও মূল্য প্রকাশের আগে নির্ভরযোগ্যভাবে যাচাই করুন।
+
+
+ERP CUSTOMER MODULE — FIRST DEVELOPMENT PHASE
+
+ERP Workspace:
+https://bishalmedicinepoint.github.io/Bishal-Medicin-Point/erp.html
+
+Setup:
+1. Supabase Dashboard খুলে SQL Editor-এ যান।
+2. Repository-এর supabase/migrations/001_customer_management.sql ফাইলের সম্পূর্ণ SQL কপি করে একবার Run করুন।
+3. SQL সফল হলে erp.html খুলে Super Admin account দিয়ে Login করুন।
+4. Customer Add, Edit, Search এবং Active/Inactive পরীক্ষা করুন।
+
+Security:
+- Customer records ও customer photos public নয়।
+- এই প্রথম পর্যায়ে শুধু নির্দিষ্ট Super Admin UID access পাবে।
+- SQL migration production database-এ চালানোর আগে SQL review করুন।
+- এই ERP code এখন erp-foundation branch-এ আছে; main/live website-এ deploy করা হয়নি।
