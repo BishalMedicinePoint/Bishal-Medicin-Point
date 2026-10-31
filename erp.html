@@ -11,7 +11,7 @@
 <section id="loginPanel" class="panel login-panel"><p class="eyebrow">SECURE WORKSPACE</p><h1>ERP Login</h1><p>অনুমোদিত Super Admin অ্যাকাউন্ট দিয়ে প্রবেশ করুন।</p><form id="loginForm" class="form-grid"><label class="full">Email<input id="email" type="email" autocomplete="username" required></label><label class="full">Password<input id="password" type="password" autocomplete="current-password" required></label><div class="full"><button class="btn" type="submit">Login</button></div></form><p id="loginStatus" class="status" role="status"></p></section>
 <section id="workspace" hidden>
 <div class="welcome"><div><p class="eyebrow">MANAGEMENT WORKSPACE</p><h1>Pharmacy ERP</h1><p>প্রথম ধাপ: Customer Management</p></div><span class="secure">Super Admin access</span></div>
-<nav class="tabs" aria-label="ERP modules"><button class="tab active" id="customersTab" type="button">Customers</button><button class="tab" id="medicinesTab" type="button">Medicine Management</button><button class="tab" id="batchesTab" type="button">Batch &amp; Expiry</button><button class="tab" id="barcodeTab" type="button">Barcode Management</button><button class="tab" id="posTab" type="button">POS Sales &amp; Billing</button><button class="tab" id="purchaseTab" type="button">Purchase Management</button></nav>
+<nav class="tabs" aria-label="ERP modules"><button class="tab active" id="customersTab" type="button">Customers</button><button class="tab" id="medicinesTab" type="button">Medicine Management</button><button class="tab" id="batchesTab" type="button">Batch &amp; Expiry</button><button class="tab" id="barcodeTab" type="button">Barcode Management</button><button class="tab" id="posTab" type="button">POS Sales &amp; Billing</button><button class="tab" id="purchaseTab" type="button">Purchase Management</button><button class="tab" id="stockTab" type="button">Stock Management</button></nav>
 <section class="panel">
 <div class="section-head"><div><h2>Customer Management</h2><p>কাস্টমার যোগ, খোঁজা ও তথ্য পরিবর্তন করুন।</p></div><button id="newCustomerBtn" class="btn" type="button">+ Add Customer</button></div>
 <div class="toolbar"><input id="searchInput" type="search" placeholder="নাম, Customer ID বা Mobile দিয়ে খুঁজুন"><select id="statusFilter"><option value="active">Active Customers</option><option value="inactive">Inactive Customers</option><option value="all">All Customers</option></select></div>
@@ -91,6 +91,21 @@
 </div><p id="posStatus" class="status" role="status"></p></div>
 <section id="posReceiptPanel" class="panel inner-panel" hidden><div class="section-head"><div><h3>Invoice Receipt</h3><p id="posReceiptMeta"></p></div><button id="printPosReceiptBtn" class="btn" type="button">Print Receipt</button></div><div id="posReceiptContent"></div></section>
 <div class="panel inner-panel"><h3>Recent Invoices</h3><div class="table-wrap"><table><thead><tr><th>Invoice</th><th>Date</th><th>Customer</th><th>Total</th><th>Paid</th><th>Due</th></tr></thead><tbody id="posInvoiceRows"><tr><td colspan="6">Invoice list load হয়নি।</td></tr></tbody></table></div></div>
+</section>
+<section id="stockModule" class="panel" hidden>
+<div class="section-head"><div><h2>Stock Management</h2><p>Purchase ও POS থেকে আসা মজুত, কম স্টক, মেয়াদ এবং Stock movement দেখুন।</p></div><button id="refreshStockBtn" class="btn muted" type="button">Refresh Stock</button></div>
+<p id="stockStatus" class="status" role="status"></p>
+<div class="stock-summary">
+<div class="stock-card"><small>Active Medicines</small><strong id="stockMedicineCount">0</strong></div>
+<div class="stock-card"><small>Available Units</small><strong id="stockUnitCount">0</strong></div>
+<div class="stock-card"><small>Low Stock Medicines (≤ 10)</small><strong id="stockLowCount">0</strong></div>
+<div class="stock-card"><small>Expired Batches</small><strong id="stockExpiredCount">0</strong></div>
+<div class="stock-card"><small>Expiring in 90 Days</small><strong id="stockSoonCount">0</strong></div>
+</div>
+<div class="panel inner-panel"><h3>Medicine-wise Stock</h3><div class="toolbar"><input id="stockSearch" type="search" placeholder="Medicine বা Batch দিয়ে খুঁজুন"><select id="stockFilter"><option value="all">All Stock</option><option value="low">Low Stock</option><option value="out">Out of Stock</option></select></div>
+<div class="table-wrap"><table><thead><tr><th>Medicine</th><th>Active Batches</th><th>Available Qty</th><th>Stock Status</th></tr></thead><tbody id="stockRows"><tr><td colspan="4">Stock load হয়নি।</td></tr></tbody></table></div></div>
+<div class="panel inner-panel"><h3>Expiry Watch</h3><div class="table-wrap"><table><thead><tr><th>Medicine</th><th>Batch</th><th>Expiry</th><th>Available Qty</th><th>Status</th></tr></thead><tbody id="stockExpiryRows"><tr><td colspan="5">তথ্য লোড হচ্ছে...</td></tr></tbody></table></div></div>
+<div class="panel inner-panel"><h3>Recent Stock Movements</h3><div class="table-wrap"><table><thead><tr><th>Date</th><th>Medicine</th><th>Batch</th><th>Type</th><th>Quantity Change</th><th>Reference</th><th>Note</th></tr></thead><tbody id="stockMovementRows"><tr><td colspan="7">Movement load হয়নি।</td></tr></tbody></table></div></div>
 </section>
 <section id="barcodeModule" class="panel" hidden>
 <div class="section-head"><div><h2>Barcode Management</h2><p>Barcode scan করে ওষুধ খুঁজুন, barcode তৈরি করুন এবং label print করুন।</p></div></div>
