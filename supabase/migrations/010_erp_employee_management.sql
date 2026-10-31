@@ -1,0 +1,9 @@
+create sequence public.bmp_employee_code_seq start 1;
+create table public.erp_employees(id uuid primary key default gen_random_uuid(),employee_code text not null unique,full_name text not null check(length(btrim(full_name))>0),mobile_number text not null,alternative_phone text,email text,job_title text not null,department text,address text,emergency_contact_name text,emergency_contact_phone text,joining_date date not null default current_date,employment_status text not null default 'active' check(employment_status in ('active','inactive','resigned')),notes text,created_by uuid not null references auth.users(id),created_at timestamptz not null default now(),updated_at timestamptz not null default now());
+create or replace function public.bmp_assign_employee_code() returns trigger language plpgsql set search_path='' as $$
+begin if new.employee_code is null or btrim(new.employee_code)='' then new.employee_code:='BMP-EMP-'||lpad(nextval('public.bmp_employee_code_seq')::text,5,'0'); end if; new.updated_at:=now(); return new; end; $$;
+create trigger bmp_employee_code_before_insert before insert on public.erp_employees for each row execute function public.bmp_assign_employee_code();
+create trigger bmp_employee_updated_at before update on public.erp_employees for each row execute function public.bmp_assign_employee_code();
+alter table public.erp_employees enable row level security;
+create policy bmp_admin_manage_employees on public.erp_employees for all to authenticated using(auth.uid()='7a3166f2-e4bb-42b8-a649-033dd2d02090'::uuid) with check(auth.uid()='7a3166f2-e4bb-42b8-a649-033dd2d02090'::uuid);
+grant select,insert,update on public.erp_employees to authenticated;
