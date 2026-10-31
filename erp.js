@@ -278,6 +278,40 @@ $("completePurchaseBtn").onclick=async()=>{const supplier=value("purchaseSupplie
 $("refreshPurchaseBtn").onclick=loadPurchaseLists;
 $("purchaseTab").onclick=async()=>{["medicineModule","batchModule","barcodeModule","posModule"].forEach(id=>$(id).hidden=true);$("purchaseModule").hidden=false;$("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;["customersTab","medicinesTab","batchesTab","barcodeTab","posTab"].forEach(id=>$(id).classList.remove("active"));$("purchaseTab").classList.add("active");await loadPurchaseLists();};
 
+
+let stockMedicines=[],stockBatches=[];
+function renderStockRows(){
+ const term=value("stockSearch").toLowerCase(),filter=value("stockFilter");
+ const totals=new Map();
+ stockMedicines.forEach(m=>totals.set(m.id,{name:m.medicine_name,qty:0,batches:0}));
+ stockBatches.forEach(b=>{if(b.is_active&&b.expiry_date>=today()&&Number(b.quantity_available)>0){const t=totals.get(b.medicine_id);if(t){t.qty+=Number(b.quantity_available);t.batches++;}}});
+ const rows=[...totals.values()].filter(x=>(x.name.toLowerCase().includes(term))&&(filter==="all"||(filter==="low"&&x.qty>0&&x.qty<=10)||(filter==="out"&&x.qty===0)));
+ $("stockRows").innerHTML=rows.length?rows.sort((a,b)=>a.name.localeCompare(b.name)).map(x=>'<tr><td>'+safe(x.name)+'</td><td>'+x.batches+'</td><td>'+x.qty+'</td><td><span class="pill '+(x.qty===0?'off':'')+'">'+(x.qty===0?'Out of Stock':x.qty<=10?'Low Stock':'In Stock')+'</span></td></tr>').join(""):'<tr><td colspan="4">কোনো Medicine পাওয়া যায়নি।</td></tr>';
+}
+async function loadStock(){
+ say($("stockStatus"),"Stock তথ্য লোড হচ্ছে...");
+ const [m,b,mv]=await Promise.all([
+  db.from("erp_medicines").select("id,medicine_name,is_active").eq("is_active",true).order("medicine_name"),
+  db.from("erp_medicine_batches").select("id,medicine_id,batch_number,expiry_date,quantity_available,is_active,erp_medicines(medicine_name)").order("expiry_date"),
+  db.from("erp_stock_movements").select("created_at,movement_type,quantity_change,reference_type,reference_id,note,erp_medicines(medicine_name),erp_medicine_batches(batch_number)").order("created_at",{ascending:false}).limit(40)
+ ]);
+ if(m.error||b.error||mv.error){say($("stockStatus"),"Stock তথ্য আনা যায়নি: "+(m.error||b.error||mv.error).message,true);return;}
+ stockMedicines=m.data||[];stockBatches=b.data||[];
+ const now=today(),soon=new Date();soon.setDate(soon.getDate()+90);const soonDate=new Date(soon.getTime()-soon.getTimezoneOffset()*60000).toISOString().slice(0,10);
+ const active=stockBatches.filter(x=>x.is_active),expired=active.filter(x=>x.expiry_date<now),expiring=active.filter(x=>x.expiry_date>=now&&x.expiry_date<=soonDate);
+ const valid=active.filter(x=>x.expiry_date>=now&&Number(x.quantity_available)>0);
+ $("stockMedicineCount").textContent=stockMedicines.length;
+ $("stockUnitCount").textContent=valid.reduce((s,x)=>s+Number(x.quantity_available),0);
+ $("stockExpiredCount").textContent=expired.length;$("stockSoonCount").textContent=expiring.length;
+ const qtyByMedicine=new Map();valid.forEach(x=>qtyByMedicine.set(x.medicine_id,(qtyByMedicine.get(x.medicine_id)||0)+Number(x.quantity_available)));
+ $("stockLowCount").textContent=stockMedicines.filter(x=>(qtyByMedicine.get(x.id)||0)>0&&(qtyByMedicine.get(x.id)||0)<=10).length;
+ $("stockExpiryRows").innerHTML=(expired.concat(expiring).sort((a,b)=>a.expiry_date.localeCompare(b.expiry_date)).slice(0,100).map(x=>'<tr><td>'+safe(x.erp_medicines?.medicine_name||"")+'</td><td>'+safe(x.batch_number)+'</td><td>'+safe(x.expiry_date)+'</td><td>'+Number(x.quantity_available)+'</td><td><span class="pill '+(x.expiry_date<now?'off':'')+'">'+(x.expiry_date<now?'Expired':'Expiring Soon')+'</span></td></tr>').join(""))||'<tr><td colspan="5">মেয়াদোত্তীর্ণ বা আগামী ৯০ দিনের মধ্যে মেয়াদ শেষ হবে এমন Batch নেই।</td></tr>';
+ $("stockMovementRows").innerHTML=(mv.data||[]).map(x=>'<tr><td>'+new Date(x.created_at).toLocaleString("en-BD")+'</td><td>'+safe(x.erp_medicines?.medicine_name||"")+'</td><td>'+safe(x.erp_medicine_batches?.batch_number||"")+'</td><td>'+safe(x.movement_type)+'</td><td>'+Number(x.quantity_change)>0?'<span>+'+Number(x.quantity_change)+'</span>':'<span>'+Number(x.quantity_change)+'</span>'+'</td><td>'+safe(x.reference_type)+'</td><td>'+safe(x.note||"")+'</td></tr>').join("")||'<tr><td colspan="7">কোনো Stock movement নেই।</td></tr>';
+ renderStockRows();say($("stockStatus"),"Stock তথ্য আপডেট হয়েছে।");
+}
+$("stockSearch").oninput=renderStockRows;$("stockFilter").onchange=renderStockRows;$("refreshStockBtn").onclick=loadStock;
+$("stockTab").onclick=async()=>{["medicineModule","batchModule","barcodeModule","posModule","purchaseModule"].forEach(id=>$(id).hidden=true);$("stockModule").hidden=false;$("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab"].forEach(id=>$(id).classList.remove("active"));$("stockTab").classList.add("active");await loadStock();};
+
 if(!window.supabase||!window.BMP_SUPABASE_URL||!window.BMP_SUPABASE_ANON_KEY||window.BMP_SUPABASE_ANON_KEY.startsWith("PASTE_")){say($("loginStatus"),"Supabase config পাওয়া যায়নি।",true);return;}
 db=window.supabase.createClient(window.BMP_SUPABASE_URL,window.BMP_SUPABASE_ANON_KEY);
 db.auth.getSession().then(({data})=>{if(data.session)verifyUser(data.session.user);});
