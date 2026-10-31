@@ -27,3 +27,5 @@ body[data-theme="dark"] .status.error{background:#482727;color:#ffdede}
 /* 31-module workspace additions */
 #photoManagerPreview{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px}
 #photoManagerPreview img{border:1px solid var(--line);border-radius:10px;padding:4px;background:#fff}
+
+@media print{body.bmp-print-target #workspace .panel.inventory-print{display:block!important}body.bmp-print-target #workspace .panel.inventory-print>.section-head{display:flex!important}body.bmp-print-target #workspace .panel.inventory-print>.section-head button{display:none!important}body.bmp-print-target #workspace .panel.inventory-print>.inner-panel{display:none!important}body.bmp-print-target #workspace .panel.inventory-print>.inner-panel:first-of-type{display:block!important}body.bmp-print-target #workspace .panel.inventory-print>.stock-summary{display:grid!important}body.bmp-print-target #workspace .panel.inventory-print .toolbar{display:none!important}}
