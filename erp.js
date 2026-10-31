@@ -1136,10 +1136,19 @@ document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="dashboardTab")t.addEven
  });
  $("downloadLocalBackup").addEventListener("click",async()=>{
   if(!ready){$("backupStatus").textContent="Admin Supabase session ছাড়া database backup নেওয়া যাবে না।";return;}
-  const tables=["customers","customer_ledger","erp_medicines","erp_medicine_batches","erp_sales_invoices","erp_sales_invoice_items","erp_purchase_invoices","erp_purchase_invoice_items","erp_suppliers","erp_employees","erp_attendance","erp_employee_payroll","erp_accounts","erp_account_transactions","erp_branches","erp_shop_settings","erp_invoice_settings"];
-  const backup={product:"Bishal Medicine Point ERP data export",createdAt:new Date().toISOString(),tables:{}};
-  for(const table of tables){const {data,error}=await client.from(table).select("*").limit(10000);if(error){$("backupStatus").textContent="Backup থেমেছে ("+table+"): "+error.message;return;}backup.tables[table]=data;}
-  const blob=new Blob([JSON.stringify(backup,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="bmp-erp-database-export-"+new Date().toISOString().slice(0,10)+".json";a.click();URL.revokeObjectURL(url);$("backupStatus").textContent="Database JSON export তৈরি হয়েছে। এটি export; full restore tool এখনো নেই।";
+  const tables=["customers","customer_ledger","medicines","erp_medicines","erp_medicine_batches","erp_sales_invoices","erp_sales_invoice_items","erp_sales_returns","erp_sales_return_items","erp_purchase_invoices","erp_purchase_invoice_items","erp_purchase_returns","erp_purchase_return_items","erp_suppliers","erp_supplier_ledger","erp_supplier_payments","erp_customer_payments","erp_employees","erp_employee_permissions","erp_attendance","erp_attendance_settings","erp_employee_payroll","erp_accounts","erp_account_transactions","erp_stock_movements","erp_branches","erp_shop_settings","erp_invoice_settings","erp_online_order_notes","erp_activity_log"];
+  const backup={product:"Bishal Medicine Point ERP data export",createdAt:new Date().toISOString(),formatVersion:2,tables:{},rowCounts:{},complete:true};
+  for(const table of tables){
+   const rows=[];let from=0,batch;
+   do{
+    const {data,error}=await client.from(table).select("*").range(from,from+999);
+    if(error){$("backupStatus").textContent="Backup থেমেছে ("+table+"): "+error.message+"; কোনো অসম্পূর্ণ ফাইল download হয়নি।";return;}
+    batch=data||[];rows.push(...batch);from+=batch.length;
+    if(batch.length===1000)$("backupStatus").textContent=table+" export হচ্ছে... "+rows.length+" rows";
+   }while(batch.length===1000);
+   backup.tables[table]=rows;backup.rowCounts[table]=rows.length;
+  }
+  const blob=new Blob([JSON.stringify(backup,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="bmp-erp-database-export-"+new Date().toISOString().slice(0,10)+".json";a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);$("backupStatus").textContent="Database JSON export তৈরি হয়েছে: "+tables.length+"টি table, "+Object.values(backup.rowCounts).reduce((n,x)=>n+x,0)+" rows। এটি export; full database restore এখনো নেই।";
  });
 
  // Cloud-backed manual online order request notes; not a public medicine checkout.
