@@ -410,7 +410,7 @@ function openEmployeeForm(row=null){
  resetEmployeeForm();$("employeeFormPanel").hidden=false;
  if(row){
   $("employeeFormTitle").textContent="Edit Employee";$("employeeRecordId").value=row.id;$("employeeCode").value=row.employee_code;
-  const map={employeeName:"full_name",employeeMobile:"mobile_number",employeeAltPhone:"alternative_phone",employeeEmail:"email",employeeJobTitle:"job_title",employeeDepartment:"department",employeeAddress:"address",employeeEmergencyName:"emergency_contact_name",employeeEmergencyPhone:"emergency_contact_phone",employeeJoiningDate:"joining_date",employeeEmploymentStatus:"employment_status",employeeNotes:"notes"};
+  const map={employeeName:"full_name",employeeMobile:"mobile_number",employeeAltPhone:"alternative_phone",employeeEmail:"email",employeeJobTitle:"job_title",employeeDepartment:"department",employeeAddress:"address",employeeEmergencyName:"emergency_contact_name",employeeEmergencyPhone:"emergency_contact_phone",employeeJoiningDate:"joining_date",employeeEmploymentStatus:"employment_status",employeeNotes:"notes",employeeLoginEmail:"login_email"};
   Object.entries(map).forEach(([id,key])=>$(id).value=row[key]??"");
  }
  $("employeeFormPanel").scrollIntoView({behavior:"smooth",block:"start"});
@@ -427,8 +427,8 @@ async function loadEmployees(){
 function renderEmployees(){
  const term=value("employeeSearch").toLowerCase();
  const rows=employees.filter(e=>[e.employee_code,e.full_name,e.mobile_number,e.job_title,e.department].some(v=>String(v||"").toLowerCase().includes(term)));
- if(!rows.length){$("employeeRows").innerHTML='<tr><td colspan="8">কোনো Employee পাওয়া যায়নি।</td></tr>';return;}
- $("employeeRows").innerHTML=rows.map(e=>'<tr><td><b>'+safe(e.employee_code)+'</b></td><td>'+safe(e.full_name)+'</td><td>'+safe(e.mobile_number)+'</td><td>'+safe(e.job_title)+'</td><td>'+safe(e.department||"—")+'</td><td>'+safe(e.joining_date)+'</td><td>'+safe(e.employment_status)+'</td><td><button class="btn muted" data-employee-edit="'+safe(e.id)+'" type="button">Edit</button></td></tr>').join("");
+ if(!rows.length){$("employeeRows").innerHTML='<tr><td colspan="9">কোনো Employee পাওয়া যায়নি।</td></tr>';return;}
+ $("employeeRows").innerHTML=rows.map(e=>'<tr><td><b>'+safe(e.employee_code)+'</b></td><td>'+safe(e.full_name)+'</td><td>'+safe(e.mobile_number)+'</td><td>'+safe(e.job_title)+'</td><td>'+safe(e.department||"—")+'</td><td>'+safe(e.joining_date)+'</td><td>'+safe(e.employment_status)+'</td><td>'+(e.login_enabled?'Linked · '+safe(e.login_email||''):'Not linked')+'</td><td><button class="btn muted" data-employee-edit="'+safe(e.id)+'" type="button">Edit</button></td></tr>').join("");
  $("employeeRows").querySelectorAll("[data-employee-edit]").forEach(b=>b.onclick=()=>openEmployeeForm(employees.find(e=>e.id===b.dataset.employeeEdit)));
 }
 $("employeeForm").onsubmit=async e=>{
@@ -442,6 +442,19 @@ $("employeeForm").onsubmit=async e=>{
  say($("employeeStatusText"),id?"Employee তথ্য আপডেট হয়েছে।":"Employee তৈরি হয়েছে। Employee ID: "+result.data.employee_code);
  $("employeeFormPanel").hidden=true;resetEmployeeForm();await loadEmployees();
 };
+async function linkEmployeeLoginAccount(){
+ if(!activeUser||activeUser.id!==ADMIN_UID){say($("employeeLoginStatus"),"শুধু Super Admin account link করতে পারবেন।",true);return;}
+ const employee=value("employeeRecordId"),email=value("employeeLoginEmail").toLowerCase();
+ if(!employee){say($("employeeLoginStatus"),"প্রথমে Employee Save করুন, তারপর Login Account link করুন।",true);return;}
+ if(!email){say($("employeeLoginStatus"),"Login Email লিখুন।",true);return;}
+ const btn=$("linkEmployeeAccountBtn");btn.disabled=true;say($("employeeLoginStatus"),"Supabase Auth account যাচাই হচ্ছে...");
+ const {data,error}=await db.rpc("erp_link_employee_auth_account",{p_employee_id:employee,p_login_email:email});
+ btn.disabled=false;
+ if(error){say($("employeeLoginStatus"),"Account link হয়নি: "+error.message,true);return;}
+ say($("employeeLoginStatus"),"Login account linked: "+(data?.[0]?.linked_email||email)+". Employee-এর ERP access এখনো চালু হয়নি; permission enforcement পরের ধাপ।");
+ await loadEmployees();
+}
+$("linkEmployeeAccountBtn").onclick=linkEmployeeLoginAccount;
 $("newEmployeeBtn").onclick=()=>openEmployeeForm();
 $("closeEmployeeForm").onclick=$("cancelEmployeeForm").onclick=()=>{$("employeeFormPanel").hidden=true;resetEmployeeForm();};
 $("employeeSearch").oninput=renderEmployees;$("employeeBranch").onchange=loadEmployees;$("employeeStatusFilter").onchange=loadEmployees;
