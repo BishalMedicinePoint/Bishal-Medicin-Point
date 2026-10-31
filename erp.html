@@ -252,7 +252,7 @@
 <section id="stockModule" class="panel" hidden>
 
 <div class="section-head"><div><h2>Stock Management</h2><p>Purchase ও POS থেকে আসা মজুত, কম স্টক, মেয়াদ এবং Stock movement দেখুন।</p></div><div class="form-actions"><button id="printInventoryBtn" class="btn" type="button">Print Inventory</button><button id="refreshStockBtn" class="btn muted" type="button">Refresh Stock</button></div></div>
-<p id="stockStatus" class="status" role="status"></p>
+<p id="stockStatus" class="status" role="status"></p><label>Stock Branch *<select id="stockBranch"><option value="">Branch নির্বাচন করুন</option></select></label>
 <div class="stock-summary">
 <div class="stock-card"><small>Active Medicines</small><strong id="stockMedicineCount">0</strong></div>
 <div class="stock-card"><small>Available Units</small><strong id="stockUnitCount">0</strong></div>
@@ -278,12 +278,12 @@
 </section>
 <section id="batchModule" class="panel" hidden>
 <div class="section-head"><div><h2>Batch &amp; Expiry Management</h2><p>প্রতিটি ওষুধের Batch, মেয়াদ ও প্রাথমিক মজুত দেখুন। বিক্রির মাধ্যমে মজুত কমানো Stock module-এর কাজ।</p></div><button id="newBatchBtn" class="btn" type="button">+ Add Batch</button></div>
-<div class="toolbar"><input id="batchSearch" type="search" placeholder="Medicine বা Batch Number দিয়ে খুঁজুন"><select id="batchExpiryFilter"><option value="all">All Batches</option><option value="soon">Expiry within 90 days</option><option value="expired">Expired</option></select></div>
+<div class="toolbar"><select id="batchBranch"><option value="">Branch নির্বাচন করুন</option></select><input id="batchSearch" type="search" placeholder="Medicine বা Batch Number দিয়ে খুঁজুন"><select id="batchExpiryFilter"><option value="all">All Batches</option><option value="soon">Expiry within 90 days</option><option value="expired">Expired</option></select></div>
 <p id="batchStatusText" class="status" role="status"></p>
 <div class="table-wrap"><table><thead><tr><th>Medicine</th><th>Batch No.</th><th>MFG</th><th>Expiry</th><th>Purchase</th><th>MRP</th><th>Received Qty</th><th>Available Qty</th><th>Status</th><th>Action</th></tr></thead><tbody id="batchRows"><tr><td colspan="10">Batch list load হয়নি।</td></tr></tbody></table></div>
 <section id="batchFormPanel" class="panel inner-panel" hidden><div class="section-head"><div><h2 id="batchFormTitle">Add Batch</h2><p>নতুন Batch যোগ করলে প্রাথমিক Available Quantity সেট হবে। Edit-এ Quantity পরিবর্তন করা যাবে না।</p></div><button id="closeBatchForm" class="btn muted" type="button">Close</button></div>
 <form id="batchForm" class="form-grid"><input id="batchRecordId" type="hidden">
-<label class="full">Medicine *<select id="batchMedicine" required><option value="">Medicine নির্বাচন করুন</option></select></label>
+<label>Branch *<select id="batchFormBranch" required><option value="">Branch নির্বাচন করুন</option></select></label><label class="full">Medicine *<select id="batchMedicine" required><option value="">Medicine নির্বাচন করুন</option></select></label>
 <label>Batch Number *<input id="batchNumber" maxlength="100" required></label><label>Manufacturing Date<input id="batchMfg" type="date"></label>
 <label>Expiry Date *<input id="batchExpiry" type="date" required></label><label>Received Date *<input id="batchReceived" type="date" required></label>
 <label>Purchase Price (৳)<input id="batchPurchasePrice" type="number" min="0" step="0.01" value="0" required></label><label>MRP (৳)<input id="batchMrp" type="number" min="0" step="0.01" value="0" required></label>
