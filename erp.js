@@ -478,7 +478,7 @@ $("submitPurchaseReturnBtn").onclick=async()=>{
 $("refreshPurchaseReturnBtn").onclick=loadPurchaseReturns;
 $("purchaseReturnTab").onclick=async()=>{
  ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","employeeModule"].forEach(id=>$(id).hidden=true);
- $("purchaseReturnModule").hidden=false;$("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;
+ $("purchaseReturnModule").hidden=false;await loadPaymentAccountOptions();$("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;
  ["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","customerDueTab","salesReturnTab"].forEach(id=>$(id).classList.remove("active"));
  $("purchaseReturnTab").classList.add("active");await loadPurchaseReturns();
 };
