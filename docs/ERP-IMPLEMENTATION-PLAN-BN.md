@@ -140,9 +140,13 @@ Implement all 30 modules requested by the owner. Preserve the current public med
 - Fields on Medicine Add: box price, strip price, per-tablet/per-unit price, purchase rate, sale price, MRP, units per strip, strips per box, and sale units allowed.
 - The Add form should preview calculated conversions (for example box → strip → tablet) and validate that quantities and prices are consistent. Batch-specific actual purchase cost and expiry remain recorded on the Batch/Purchase entry.
 
-## Invoice paper-size selector
+## Invoice paper-size selector and print layouts
 
-- Add an Invoice Settings paper-size dropdown with A4, A5, 80mm thermal, and 58mm thermal presets.
-- Allow selecting the default size and choosing a different size at print/preview time when permitted.
-- Preview must reflect the selected page width, margins, typography, and invoice layout; support browser print and PDF output.
-- Persist the Super Admin's default setting and keep invoice content/financial totals identical across sizes.
+- On the POS invoice creation screen, show the paper-size selector before the invoice is generated/printed. Use **Auto Thermal (thermal receipt)** as the preselected default option.
+- Staff can override the default for an individual invoice whenever a different paper is needed; changing one invoice's format must not silently change the saved shop-wide default.
+- Include common presets: Auto Thermal, Thermal 80mm, Thermal 58mm, Invoice 10cm (100mm), A4, A5, Legal, Letter/Office, and Custom size. Provide a clear Custom width/height option for other printer or office-paper formats.
+- If “Auto Thermal” is selected, choose the configured/available thermal receipt width (80mm or 58mm) and show the detected/selected width in preview; if it cannot be detected reliably, let the user choose 80mm or 58mm rather than guessing.
+- Keep a Super Admin setting for the shop's default paper size, initially Auto Thermal. The POS selector should start with that saved default, while allowing a per-invoice override.
+- The selected format must control the print preview, page width/height, margins, font sizing, line wrapping, and browser print/PDF output.
+- Keep invoice contents, item quantities, prices, discounts, tax (if configured), paid amount, and due amount identical across all paper sizes; only the layout changes.
+- Add printer-friendly CSS and test thermal printers and standard office printers before production release.
