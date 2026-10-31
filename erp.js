@@ -526,4 +526,63 @@ $("salesReturnTab").onclick=async()=>{
 if(!window.supabase||!window.BMP_SUPABASE_URL||!window.BMP_SUPABASE_ANON_KEY||window.BMP_SUPABASE_ANON_KEY.startsWith("PASTE_")){say($("loginStatus"),"Supabase config পাওয়া যায়নি।",true);return;}
 db=window.supabase.createClient(window.BMP_SUPABASE_URL,window.BMP_SUPABASE_ANON_KEY);
 db.auth.getSession().then(({data})=>{if(data.session)verifyUser(data.session.user);});
+
+let attendanceCache=[];
+function attendanceMonthBounds(){
+ const m=value("attendanceMonth")||new Date().toISOString().slice(0,7);
+ const [y,mo]=m.split("-").map(Number);
+ return {start:m+"-01",end:new Date(y,mo,1).toISOString().slice(0,10)};
+}
+async function loadAttendance(){
+ if(!activeUser||activeUser.id!==ADMIN_UID)return;
+ const [emps,month]=await Promise.all([
+  db.from("erp_employees").select("id,employee_code,full_name").eq("employment_status","active").order("full_name"),
+  Promise.resolve(attendanceMonthBounds())
+ ]);
+ if(emps.error){say($("attendanceStatusText"),"Employee load হয়নি: "+emps.error.message,true);return;}
+ $("attendanceEmployee").innerHTML='<option value="">Employee নির্বাচন করুন</option>'+(emps.data||[]).map(e=>'<option value="'+e.id+'">'+safe(e.employee_code)+' · '+safe(e.full_name)+'</option>').join("");
+ const {data,error}=await db.from("erp_attendance").select("id,employee_id,attendance_date,attendance_status,check_in,check_out,notes,erp_employees(employee_code,full_name)").gte("attendance_date",month.start).lt("attendance_date",month.end).order("attendance_date",{ascending:false}).limit(2000);
+ if(error){say($("attendanceStatusText"),"Attendance load হয়নি: "+error.message,true);return;}
+ attendanceCache=data||[];renderAttendance();
+}
+function renderAttendance(){
+ const term=value("attendanceSearch").trim().toLowerCase(),filter=value("attendanceFilter");
+ const rows=attendanceCache.filter(r=>(filter==="all"||r.attendance_status===filter)&&(!term||((r.erp_employees?.employee_code||"")+" "+(r.erp_employees?.full_name||"")).toLowerCase().includes(term)));
+ const counts={present:0,absent:0,leave:0,holiday:0};
+ attendanceCache.forEach(r=>counts[r.attendance_status]=(counts[r.attendance_status]||0)+1);
+ $("attendancePresentCount").textContent=counts.present;$("attendanceAbsentCount").textContent=counts.absent;$("attendanceLeaveCount").textContent=counts.leave;$("attendanceHolidayCount").textContent=counts.holiday;
+ $("attendanceRows").innerHTML=rows.map(r=>'<tr><td>'+safe(r.attendance_date)+'</td><td>'+safe(r.erp_employees?.employee_code||"")+'</td><td>'+safe(r.erp_employees?.full_name||"")+'</td><td>'+safe(r.attendance_status)+'</td><td>'+safe(r.check_in||"—")+'</td><td>'+safe(r.check_out||"—")+'</td><td>'+safe(r.notes||"")+'</td></tr>').join("")||'<tr><td colspan="7">এই মাসে কোনো Attendance পাওয়া যায়নি।</td></tr>';
+}
+function resetAttendanceForm(){
+ $("attendanceEmployee").value="";$("attendanceStatus").value="present";$("attendanceCheckIn").value="";$("attendanceCheckOut").value="";$("attendanceNotes").value="";
+}
+$("saveAttendanceBtn").onclick=async()=>{
+ if(!activeUser||activeUser.id!==ADMIN_UID){say($("attendanceStatusText"),"শুধু Super Admin Attendance সংরক্ষণ করতে পারবেন।",true);return;}
+ const employee=value("attendanceEmployee"),date=value("attendanceDate"),status=value("attendanceStatus"),cin=value("attendanceCheckIn")||null,cout=value("attendanceCheckOut")||null,notes=value("attendanceNotes").trim()||null;
+ if(!employee||!date){say($("attendanceStatusText"),"তারিখ ও Employee নির্বাচন করুন।",true);return;}
+ if(cin&&cout&&cout<cin){say($("attendanceStatusText"),"Check-out সময় Check-in-এর আগে হতে পারবে না।",true);return;}
+ const row={employee_id:employee,attendance_date:date,attendance_status:status,check_in:status==="present"?cin:null,check_out:status==="present"?cout:null,notes,created_by:activeUser.id};
+ $("saveAttendanceBtn").disabled=true;
+ const {error}=await db.from("erp_attendance").upsert(row,{onConflict:"employee_id,attendance_date"});
+ $("saveAttendanceBtn").disabled=false;
+ if(error){say($("attendanceStatusText"),"Attendance সংরক্ষণ হয়নি: "+error.message,true);return;}
+ say($("attendanceStatusText"),"Attendance সংরক্ষণ হয়েছে। একই Employee ও Date হলে আগের রেকর্ড আপডেট হবে।");
+ resetAttendanceForm();await loadAttendance();
+};
+$("resetAttendanceBtn").onclick=resetAttendanceForm;
+$("refreshAttendanceBtn").onclick=loadAttendance;
+$("attendanceSearch").oninput=renderAttendance;
+$("attendanceFilter").onchange=renderAttendance;
+$("attendanceMonth").onchange=loadAttendance;
+$("attendanceTab").onclick=async()=>{
+ ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","employeeModule"].forEach(id=>$(id).hidden=true);
+ $("attendanceModule").hidden=false;$("customerModulePanel").hidden=true;$("customerFormPanel").hidden=true;
+ ["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","customerDueTab","salesReturnTab","purchaseReturnTab","employeesTab"].forEach(id=>$(id).classList.remove("active"));
+ $("attendanceTab").classList.add("active");await loadAttendance();
+};
+const attendanceToday=new Date().toISOString().slice(0,10);
+$("attendanceDate").value=attendanceToday;
+const monthNow=attendanceToday.slice(0,7);
+$("attendanceMonth").innerHTML='<option value="'+monthNow+'">'+monthNow+'</option>';
+
 })();
