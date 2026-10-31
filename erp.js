@@ -177,7 +177,7 @@ $("batchForm").onsubmit=async e=>{
  if(id) result=await db.from("erp_medicine_batches").update(payload).eq("id",id);
  else {payload.quantity_received=qty;payload.quantity_available=qty;payload.created_by=activeUser.id;result=await db.from("erp_medicine_batches").insert(payload);}
  if(result.error){say($("batchStatusText"),"Batch সংরক্ষণ হয়নি: "+result.error.message,true);return;}
- $("batchFormPanel").hidden=true;$("batchMedicine").disabled=false;$("batchQuantity").disabled=false;
+ $("batchFormPanel").hidden=true;$("batchMedicine").disabled=false;$("batchFormBranch").disabled=false;$("batchQuantity").disabled=false;
  say($("batchStatusText"),id?"Batch-এর তথ্য আপডেট হয়েছে। Quantity অপরিবর্তিত আছে।":"Batch যোগ হয়েছে। প্রাথমিক Available Quantity সেট হয়েছে।");
  await loadBatches();
 };
@@ -328,11 +328,12 @@ function renderStockRows(){
  $("stockRows").innerHTML=rows.length?rows.sort((a,b)=>a.name.localeCompare(b.name)).map(x=>'<tr><td>'+safe(x.name)+'</td><td>'+x.batches+'</td><td>'+x.qty+'</td><td><span class="pill '+(x.qty===0?'off':'')+'">'+(x.qty===0?'Out of Stock':x.qty<=10?'Low Stock':'In Stock')+'</span></td></tr>').join(""):'<tr><td colspan="4">কোনো Medicine পাওয়া যায়নি।</td></tr>';
 }
 async function loadStock(){
+ await loadInventoryBranches();if(!value("stockBranch")){say($("stockStatus"),"Stock দেখার জন্য Branch নির্বাচন করুন।");return;}
  say($("stockStatus"),"Stock তথ্য লোড হচ্ছে...");
  const [m,b,mv]=await Promise.all([
   db.from("erp_medicines").select("id,medicine_name,is_active").eq("is_active",true).order("medicine_name"),
-  db.from("erp_medicine_batches").select("id,medicine_id,batch_number,expiry_date,quantity_available,is_active,branch_id,erp_medicines(medicine_name)").eq("branch_id",value("stockBranch")||"11111111-1111-4111-8111-111111111111").order("expiry_date"),
-  db.from("erp_stock_movements").select("created_at,movement_type,quantity_change,reference_type,reference_id,note,branch_id,erp_medicines(medicine_name),erp_medicine_batches(batch_number)").eq("branch_id",value("stockBranch")||"11111111-1111-4111-8111-111111111111").order("created_at",{ascending:false}).limit(40)
+  db.from("erp_medicine_batches").select("id,medicine_id,batch_number,expiry_date,quantity_available,is_active,branch_id,erp_medicines(medicine_name)").eq("branch_id",value("stockBranch")).order("expiry_date"),
+  db.from("erp_stock_movements").select("created_at,movement_type,quantity_change,reference_type,reference_id,note,branch_id,erp_medicines(medicine_name),erp_medicine_batches(batch_number)").eq("branch_id",value("stockBranch")).order("created_at",{ascending:false}).limit(40)
  ]);
  if(m.error||b.error||mv.error){say($("stockStatus"),"Stock তথ্য আনা যায়নি: "+(m.error||b.error||mv.error).message,true);return;}
  stockMedicines=m.data||[];stockBatches=b.data||[];
