@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ERP | Bishal Medicine Point</title>
+<link rel="stylesheet" href="erp.css">
+</head>
+<body>
+<header class="topbar"><a class="brand" href="index.html"><span class="plus">+</span><span><b>Bishal Medicine Point</b><small>Pharmacy ERP</small></span></a><div class="top-actions"><a href="admin.html">Medicine Admin</a><button id="logoutBtn" class="btn muted" hidden>Logout</button></div></header>
+<main class="wrap">
+<section id="loginPanel" class="panel login-panel"><p class="eyebrow">SECURE WORKSPACE</p><h1>ERP Login</h1><p>অনুমোদিত Super Admin অ্যাকাউন্ট দিয়ে প্রবেশ করুন।</p><form id="loginForm" class="form-grid"><label class="full">Email<input id="email" type="email" autocomplete="username" required></label><label class="full">Password<input id="password" type="password" autocomplete="current-password" required></label><div class="full"><button class="btn" type="submit">Login</button></div></form><p id="loginStatus" class="status" role="status"></p></section>
+<section id="workspace" hidden>
+<div class="welcome"><div><p class="eyebrow">MANAGEMENT WORKSPACE</p><h1>Pharmacy ERP</h1><p>প্রথম ধাপ: Customer Management</p></div><span class="secure">Super Admin access</span></div>
+<nav class="tabs" aria-label="ERP modules"><button class="tab active" type="button">Customers</button><span class="tab disabled">অন্যান্য মডিউল পরবর্তী ধাপে</span></nav>
+<section class="panel">
+<div class="section-head"><div><h2>Customer Management</h2><p>কাস্টমার যোগ, খোঁজা ও তথ্য পরিবর্তন করুন।</p></div><button id="newCustomerBtn" class="btn" type="button">+ Add Customer</button></div>
+<div class="toolbar"><input id="searchInput" type="search" placeholder="নাম, Customer ID বা Mobile দিয়ে খুঁজুন"><select id="statusFilter"><option value="active">Active Customers</option><option value="inactive">Inactive Customers</option><option value="all">All Customers</option></select></div>
+<p id="pageStatus" class="status" role="status"></p>
+<div class="table-wrap"><table><thead><tr><th>Customer ID</th><th>Customer</th><th>Mobile</th><th>Type</th><th>Previous Due</th><th>Credit Limit</th><th>Status</th><th>Action</th></tr></thead><tbody id="customerRows"><tr><td colspan="8">তথ্য লোড হচ্ছে...</td></tr></tbody></table></div>
+</section>
+<section id="customerFormPanel" class="panel" hidden>
+<div class="section-head"><div><h2 id="formTitle">Customer Information</h2><p>তারকা (*) চিহ্নিত ফিল্ডগুলো আবশ্যক।</p></div><button id="closeFormBtn" class="btn muted" type="button">Close</button></div>
+<form id="customerForm" class="form-grid">
+<input id="recordId" type="hidden">
+<label>Customer ID<input id="customerId" readonly placeholder="Save করার পর তৈরি হবে"></label>
+<label>Customer Name *<input id="customerName" maxlength="150" required></label>
+<label>Mobile Number *<input id="mobile" type="tel" maxlength="30" required></label>
+<label>Alternative Phone<input id="alternativePhone" type="tel" maxlength="30"></label>
+<label>Email<input id="customerEmail" type="email" maxlength="180"></label>
+<label>MID<input id="mid" maxlength="80"></label>
+<label>Reference Partner<input id="referencePartner" maxlength="150"></label>
+<label>Customer Type<select id="customerType"><option value="Regular">Regular</option><option value="Wholesale">Wholesale</option><option value="Corporate">Corporate</option><option value="Doctor">Doctor</option><option value="Other">Other</option></select></label>
+<label class="full">Address<textarea id="address" rows="2" maxlength="500"></textarea></label>
+<label>Previous Due (৳)<input id="previousDue" type="number" min="0" step="0.01" value="0"></label>
+<label>Credit Limit (৳)<input id="creditLimit" type="number" min="0" step="0.01" value="0"></label>
+<label class="full">Customer Photo<input id="customerPhoto" type="file" accept="image/png,image/jpeg,image/webp"><small>JPG, PNG বা WebP; সর্বোচ্চ ৫ MB।</small><img id="photoPreview" class="photo-preview" alt="Customer photo preview" hidden></label>
+<label class="full">Notes<textarea id="notes" rows="3" maxlength="1000"></textarea></label>
+<label>Registration Date<input id="registrationDate" type="date" required></label>
+<div class="full form-actions"><button class="btn" type="submit">Save Customer</button><button id="cancelFormBtn" class="btn muted" type="button">Cancel</button></div>
+</form>
+</section>
+</section>
+</main>
+<footer>© Bishal Medicine Point · ERP development workspace</footer>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="supabase-config.js"></script><script src="erp.js"></script>
+</body></html>
