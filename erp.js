@@ -1118,6 +1118,26 @@ document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="dashboardTab")t.addEven
   for(const table of tables){const {data,error}=await client.from(table).select("*").limit(10000);if(error){$("backupStatus").textContent="Backup থেমেছে ("+table+"): "+error.message;return;}backup.tables[table]=data;}
   const blob=new Blob([JSON.stringify(backup,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="bmp-erp-database-export-"+new Date().toISOString().slice(0,10)+".json";a.click();URL.revokeObjectURL(url);$("backupStatus").textContent="Database JSON export তৈরি হয়েছে। এটি export; full restore tool এখনো নেই।";
  });
+
+ // Cloud-backed manual online order request notes; not a public medicine checkout.
+ $("onlineOrderForm").onsubmit=null;
+ $("onlineOrderForm").addEventListener("submit",async e=>{
+  e.preventDefault();if(!ready){$("onlineOrderStatus").textContent="Admin Supabase session নেই; cloud save হয়নি।";return;}
+  const row={customer_name:$("onlineCustomer").value.trim(),phone:$("onlinePhone").value.trim(),order_details:$("onlineDetails").value.trim(),created_by:adminId};
+  const {error}=await client.from("erp_online_order_notes").insert(row);
+  $("onlineOrderStatus").textContent=error?"Order note save failed: "+error.message:"Order note Supabase-এ সংরক্ষিত হয়েছে।";
+  if(!error){e.target.reset();await renderOnlineOrders();}
+ });
+ async function renderOnlineOrders(){
+  if(!ready)return;
+  const {data,error}=await client.from("erp_online_order_notes").select("created_at,customer_name,phone,order_details,order_status").order("created_at",{ascending:false}).limit(500);
+  if(error){$("onlineOrderRows").innerHTML='<tr><td colspan="5">'+esc(error.message)+'</td></tr>';return;}
+  $("onlineOrderRows").innerHTML=data.length?data.map(x=>'<tr><td>'+esc(new Date(x.created_at).toLocaleDateString())+'</td><td>'+esc(x.customer_name)+'</td><td>'+esc(x.phone)+'</td><td>'+esc(x.order_details)+'</td><td>'+esc(x.order_status)+'</td></tr>').join(""):'<tr><td colspan="5">No order notes.</td></tr>';
+ }
+ $("onlineOrdersTab").addEventListener("click",renderOnlineOrders);
+ // Replace local-only submit handlers so the database result is authoritative.
+ $("shopSettingsForm").onsubmit=null;$("invoiceSettingsForm").onsubmit=null;$("branchForm").onsubmit=null;
+
  $("clearLocalActivity").addEventListener("click",()=>{if(ready)renderLog();});
  connect();
 })();
