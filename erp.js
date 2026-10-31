@@ -129,10 +129,11 @@ async function loadBatchMedicineOptions(selected=""){
  $("batchMedicine").innerHTML='<option value="">Medicine নির্বাচন করুন</option>'+(data||[]).map(m=>'<option value="'+safe(m.id)+'">'+safe(m.medicine_name)+(m.strength?" · "+safe(m.strength):"")+(m.brand?" · "+safe(m.brand):"")+'</option>').join("");
  $("batchMedicine").value=selected;
 }
-async function loadBatches(){
+async function loadInventoryBranches(){const {data,error}=await db.from("erp_branches").select("id,branch_name,branch_code").eq("is_active",true).order("branch_name");if(error){say($("batchStatusText"),"Branch load হয়নি: "+error.message,true);say($("stockStatus"),"Branch load হয়নি: "+error.message,true);return;}for(const id of ["batchBranch","stockBranch","batchFormBranch"]){const el=$(id);if(!el)continue;const old=el.value;el.innerHTML='<option value="">Branch নির্বাচন করুন</option>'+(data||[]).map(b=>'<option value="'+safe(b.id)+'">'+safe(b.branch_name)+' · '+safe(b.branch_code)+'</option>').join("");if(old&&(data||[]).some(b=>b.id===old))el.value=old;else if(data?.length===1)el.value=data[0].id;}}
+async function loadBatches(){await loadInventoryBranches();
  const body=$("batchRows");if(!body)return;
  body.innerHTML='<tr><td colspan="10">Batch list লোড হচ্ছে...</td></tr>';
- const {data,error}=await db.from("erp_medicine_batches").select("*,erp_medicines(medicine_name,brand,strength)").order("expiry_date",{ascending:true});
+ let batchQuery=db.from("erp_medicine_batches").select("*,erp_medicines(medicine_name,brand,strength)").order("expiry_date",{ascending:true});if(value("batchBranch"))batchQuery=batchQuery.eq("branch_id",value("batchBranch"));else{body.innerHTML='<tr><td colspan="10">প্রথমে Branch নির্বাচন করুন।</td></tr>';return;}const {data,error}=await batchQuery;
  if(error){body.innerHTML='<tr><td colspan="10">Batch list load হয়নি।</td></tr>';say($("batchStatusText"),"Batch list আনা যায়নি: "+error.message,true);return;}
  const term=value("batchSearch").toLowerCase(), filter=$("batchExpiryFilter").value, now=today();
  const edge=new Date();edge.setDate(edge.getDate()+90);const edgeDate=new Date(edge.getTime()-edge.getTimezoneOffset()*60000).toISOString().slice(0,10);
@@ -154,9 +155,9 @@ function openBatch(batch=null){
  $("batchForm").reset();$("batchRecordId").value=batch?.id||"";
  $("batchFormTitle").textContent=batch?"Edit Batch":"Add Batch";
  $("batchReceived").value=today();$("batchQuantity").value="0";
- $("batchMedicine").disabled=false;$("batchQuantity").disabled=false;$("batchQuantityNote").hidden=true;
+ $("batchMedicine").disabled=false;$("batchFormBranch").disabled=false;$("batchQuantity").disabled=false;$("batchQuantityNote").hidden=true;
  loadBatchMedicineOptions(batch?.medicine_id||"").then(()=>{
-  if(batch){$("batchMedicine").disabled=true;$("batchQuantity").value=batch.quantity_received;$("batchQuantity").disabled=true;$("batchQuantityNote").hidden=false;}
+  if(batch){$("batchFormBranch").value=batch.branch_id||"";$("batchFormBranch").disabled=true;$("batchMedicine").disabled=true;$("batchQuantity").value=batch.quantity_received;$("batchQuantity").disabled=true;$("batchQuantityNote").hidden=false;}
  });
  const fields={batchNumber:"batch_number",batchMfg:"manufacturing_date",batchExpiry:"expiry_date",batchReceived:"received_date",batchPurchasePrice:"purchase_price",batchMrp:"mrp",batchSupplier:"supplier_name",batchNotes:"notes"};
  if(batch)Object.entries(fields).forEach(([a,b])=>$(a).value=batch[b]??"");
@@ -181,7 +182,7 @@ $("batchForm").onsubmit=async e=>{
  await loadBatches();
 };
 $("newBatchBtn").onclick=()=>openBatch();
-$("closeBatchForm").onclick=$("cancelBatchForm").onclick=()=>{$("batchFormPanel").hidden=true;$("batchMedicine").disabled=false;$("batchQuantity").disabled=false;};
+$("closeBatchForm").onclick=$("cancelBatchForm").onclick=()=>{$("batchFormPanel").hidden=true;$("batchMedicine").disabled=false;$("batchFormBranch").disabled=false;$("batchQuantity").disabled=false;};
 $("batchSearch").oninput=loadBatches;$("batchExpiryFilter").onchange=loadBatches;
 $("batchesTab").onclick=()=>{
  $("medicineModule").hidden=true;$("barcodeModule").hidden=true;$("posModule").hidden=true;$("purchaseModule").hidden=true;$("batchModule").hidden=false;
@@ -330,8 +331,8 @@ async function loadStock(){
  say($("stockStatus"),"Stock তথ্য লোড হচ্ছে...");
  const [m,b,mv]=await Promise.all([
   db.from("erp_medicines").select("id,medicine_name,is_active").eq("is_active",true).order("medicine_name"),
-  db.from("erp_medicine_batches").select("id,medicine_id,batch_number,expiry_date,quantity_available,is_active,erp_medicines(medicine_name)").order("expiry_date"),
-  db.from("erp_stock_movements").select("created_at,movement_type,quantity_change,reference_type,reference_id,note,erp_medicines(medicine_name),erp_medicine_batches(batch_number)").order("created_at",{ascending:false}).limit(40)
+  db.from("erp_medicine_batches").select("id,medicine_id,batch_number,expiry_date,quantity_available,is_active,branch_id,erp_medicines(medicine_name)").eq("branch_id",value("stockBranch")||"11111111-1111-4111-8111-111111111111").order("expiry_date"),
+  db.from("erp_stock_movements").select("created_at,movement_type,quantity_change,reference_type,reference_id,note,branch_id,erp_medicines(medicine_name),erp_medicine_batches(batch_number)").eq("branch_id",value("stockBranch")||"11111111-1111-4111-8111-111111111111").order("created_at",{ascending:false}).limit(40)
  ]);
  if(m.error||b.error||mv.error){say($("stockStatus"),"Stock তথ্য আনা যায়নি: "+(m.error||b.error||mv.error).message,true);return;}
  stockMedicines=m.data||[];stockBatches=b.data||[];
@@ -348,7 +349,7 @@ async function loadStock(){
  renderStockRows();say($("stockStatus"),"Stock তথ্য আপডেট হয়েছে।");
 }
 $("printInventoryBtn").onclick=()=>{const panel=$("stockModule");panel.classList.add("inventory-print");document.body.classList.add("bmp-print-target");const oldTitle=document.title;document.title="Inventory Stock Report - Bishal Medicine Point";window.print();setTimeout(()=>{panel.classList.remove("inventory-print");document.body.classList.remove("bmp-print-target");document.title=oldTitle;},300);};
-$("stockSearch").oninput=renderStockRows;$("stockFilter").onchange=renderStockRows;$("refreshStockBtn").onclick=loadStock;
+$("stockSearch").oninput=renderStockRows;$("stockFilter").onchange=renderStockRows;$("stockBranch").onchange=loadStock;$("batchBranch").onchange=loadBatches;$("refreshStockBtn").onclick=loadStock;
 $("stockTab").onclick=async()=>{["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","employeeModule"].forEach(id=>$(id).hidden=true);$("stockModule").hidden=false;$("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab"].forEach(id=>$(id).classList.remove("active"));$("stockTab").classList.add("active");await loadStock();};
 
 
