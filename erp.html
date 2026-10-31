@@ -101,6 +101,7 @@
 </div>
 <div class="panel inner-panel"><h3>Purchase Payment</h3><div class="form-grid">
 <label>Discount (৳)<input id="purchaseDiscount" type="number" min="0" step="0.01" value="0"></label><label>Paid Amount (৳)<input id="purchasePaid" type="number" min="0" step="0.01" value="0"></label>
+<label>Pay From Account *<select id="purchasePaymentAccount" required><option value="">প্রথমে Accounts-এ Account তৈরি করুন</option></select></label>
 <label>Payment Method<select id="purchasePaymentMethod"><option value="cash">Cash</option><option value="bank">Bank</option><option value="mobile_banking">Mobile Banking</option><option value="card">Card</option><option value="other">Other</option></select></label><label>Reference Number<input id="purchaseReference" maxlength="120"></label>
 <label class="full">Notes<textarea id="purchaseNotes" rows="2" maxlength="500"></textarea></label>
 <div class="full"><strong>Subtotal: ৳ <span id="purchaseSubtotal">0.00</span> · Total: ৳ <span id="purchaseTotal">0.00</span></strong></div>
@@ -132,6 +133,7 @@
 <div class="panel inner-panel"><h3>Customer &amp; Payment</h3><div class="form-grid">
 <label>Customer (Credit Sale-এর জন্য আবশ্যক)<select id="posCustomer"><option value="">Walk-in Customer</option></select></label>
 <label>Paid Amount (৳)<input id="posPaid" type="number" min="0" step="0.01" value="0"></label>
+<label>Deposit Account *<select id="posPaymentAccount" required><option value="">প্রথমে Accounts-এ Account তৈরি করুন</option></select></label>
 <label>Payment Method<select id="posPaymentMethod"><option value="cash">Cash</option><option value="bank">Bank</option><option value="mobile_banking">Mobile Banking</option><option value="card">Card</option><option value="other">Other</option></select></label>
 <label>Transaction / Reference<input id="posPaymentReference" maxlength="120"></label>
 <label class="full">Notes<textarea id="posNotes" rows="2" maxlength="500"></textarea></label>
