@@ -1012,3 +1012,17 @@ $("dashboardTab").onclick=async()=>{
 };
 $("refreshDashboardBtn").onclick=loadDashboard;
 document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="dashboardTab")t.addEventListener("click",()=>{$("dashboardModule").hidden=true;});});
+
+/* Appearance preferences: theme and content zoom */
+(()=>{
+ const body=document.body, themeBtn=$("themeToggle"), level=$("zoomLevel");
+ let theme="light", zoom=100;
+ try{theme=localStorage.getItem("bmp-erp-theme")==="dark"?"dark":"light";zoom=Number(localStorage.getItem("bmp-erp-zoom"))||100;}catch(e){}
+ const applyTheme=()=>{body.dataset.theme=theme;themeBtn.textContent=theme==="dark"?"☀️ Light":"🌙 Dark";themeBtn.setAttribute("aria-pressed",String(theme==="dark"));};
+ const applyZoom=()=>{zoom=Math.max(80,Math.min(130,zoom));body.style.zoom=zoom+"%";level.textContent=zoom+"%";try{localStorage.setItem("bmp-erp-zoom",String(zoom));}catch(e){}};
+ themeBtn.onclick=()=>{theme=theme==="dark"?"light":"dark";applyTheme();try{localStorage.setItem("bmp-erp-theme",theme);}catch(e){}};
+ $("zoomIn").onclick=()=>{zoom+=10;applyZoom();};
+ $("zoomOut").onclick=()=>{zoom-=10;applyZoom();};
+ $("zoomReset").onclick=()=>{zoom=100;applyZoom();};
+ applyTheme();applyZoom();
+})();
