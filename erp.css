@@ -20,3 +20,6 @@ body[data-theme="dark"] .barcode-label{background:#fff;color:#111}
 body[data-theme="dark"] .status{background:#233b2d;color:#d6f1df}
 body[data-theme="dark"] .status.error{background:#482727;color:#ffdede}
 @media(max-width:760px){.top-actions{gap:5px;flex-wrap:wrap;justify-content:flex-end}.zoom-tools{gap:3px}.zoom-tools .btn{padding:6px 7px}.top-actions #themeToggle{padding:6px 8px}}
+
+.welcome-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+@media print{body{background:#fff!important;color:#111!important}.topbar,.tabs,.welcome-actions,button,.toolbar,.form-actions,footer{display:none!important}#workspace{display:block!important}.panel{display:block!important;box-shadow:none!important;border:0!important;break-inside:avoid}.table-wrap{overflow:visible!important}table{min-width:0!important;font-size:10px!important}th,td{padding:5px!important;color:#111!important;background:#fff!important}.stock-card{break-inside:avoid}}
