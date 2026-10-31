@@ -1055,6 +1055,73 @@ document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="dashboardTab")t.addEven
  };
 })();
 
+
+/* Supabase-backed settings, branch register, audit viewer, photo storage and data export */
+(()=>{
+ const $=id=>document.getElementById(id);
+ let client=null,ready=false;
+ const adminId="7a3166f2-e4bb-42b8-a649-033dd2d02090";
+ const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+ async function connect(){
+  try{
+   if(!window.supabase?.createClient||!window.BMP_SUPABASE_URL||!window.BMP_SUPABASE_ANON_KEY)return;
+   client=window.supabase.createClient(window.BMP_SUPABASE_URL,window.BMP_SUPABASE_ANON_KEY);
+   const {data:{session}}=await client.auth.getSession();
+   ready=!!session&&session.user.id===adminId;
+   if(ready){await loadSettings("erp_shop_settings",["shopName","shopPhone","shopEmail","shopAddress"],{shop_name:"shopName",phone:"shopPhone",email:"shopEmail",address:"shopAddress"});await loadSettings("erp_invoice_settings",["invoiceTitle","invoicePrefix","invoicePaper","invoiceLogo","invoiceFooter"],{invoice_title:"invoiceTitle",invoice_prefix:"invoicePrefix",paper_size:"invoicePaper",show_logo:"invoiceLogo",footer_text:"invoiceFooter"});await renderBranches();await renderLog();}
+  }catch(e){console.warn("ERP cloud module connection:",e);}
+ }
+ async function loadSettings(table,ids,map){
+  const {data,error}=await client.from(table).select("*").eq("id",true).maybeSingle();if(error||!data)return;
+  Object.entries(map).forEach(([col,id])=>{if(data[col]!==null&&data[col]!==undefined)$(id).value=col==="show_logo"?(data[col]?"yes":"no"):String(data[col]);});
+ }
+ async function saveSettings(table,values,status,label){
+  if(!ready){$(status).textContent="Admin Supabase session নেই; cloud save করা যায়নি।";return;}
+  const {error}=await client.from(table).upsert({...values,id:true,updated_by:adminId,updated_at:new Date().toISOString()});
+  $(status).textContent=error?"Cloud save failed: "+error.message:label+" Supabase-এ সংরক্ষিত হয়েছে।";
+ }
+ $("shopSettingsForm").addEventListener("submit",e=>{e.preventDefault();saveSettings("erp_shop_settings",{shop_name:$("shopName").value.trim(),phone:$("shopPhone").value.trim(),email:$("shopEmail").value.trim(),address:$("shopAddress").value.trim()},"shopSettingsStatus","Shop settings");});
+ $("invoiceSettingsForm").addEventListener("submit",e=>{e.preventDefault();saveSettings("erp_invoice_settings",{invoice_title:$("invoiceTitle").value.trim(),invoice_prefix:$("invoicePrefix").value.trim(),paper_size:$("invoicePaper").value,show_logo:$("invoiceLogo").value==="yes",footer_text:$("invoiceFooter").value.trim()},"invoiceSettingsStatus","Invoice settings");});
+ async function renderBranches(){
+  if(!ready)return;
+  const {data,error}=await client.from("erp_branches").select("branch_code,branch_name,phone,address,is_active").order("created_at");
+  if(error){$("branchStatus").textContent=error.message;return;}
+  $("branchRows").innerHTML=data.length?data.map(x=>'<tr><td>'+esc(x.branch_name)+'</td><td>'+esc(x.branch_code)+'</td><td>'+esc(x.phone)+'</td><td>'+esc(x.address)+'</td></tr>').join(""):'<tr><td colspan="4">No branch added.</td></tr>';
+ }
+ $("branchForm").addEventListener("submit",async e=>{
+  e.preventDefault();if(!ready){$("branchStatus").textContent="Admin Supabase session নেই; cloud save হয়নি।";return;}
+  const row={branch_name:$("branchName").value.trim(),branch_code:$("branchCode").value.trim(),phone:$("branchPhone").value.trim(),address:$("branchAddress").value.trim(),created_by:adminId};
+  const {error}=await client.from("erp_branches").insert(row);
+  $("branchStatus").textContent=error?"Branch save failed: "+error.message:"Branch Supabase-এ সংরক্ষিত হয়েছে।";if(!error){e.target.reset();await renderBranches();}
+ });
+ async function renderLog(){
+  if(!ready)return;
+  const {data,error}=await client.from("erp_activity_log").select("changed_at,table_name,operation,record_id,actor_id").order("changed_at",{ascending:false}).limit(200);
+  if(error){$("activityLogRows").innerHTML='<tr><td colspan="2">'+esc(error.message)+'</td></tr>';return;}
+  $("activityLogRows").innerHTML=data.length?data.map(x=>'<tr><td>'+esc(new Date(x.changed_at).toLocaleString())+'</td><td>'+esc(x.operation+" "+x.table_name+" "+(x.record_id||""))+'</td></tr>').join(""):'<tr><td colspan="2">No database activity yet.</td></tr>';
+ }
+ $("photoManagerInput").addEventListener("change",async e=>{
+  if(!ready){$("photoManagerStatus").textContent="Admin Supabase session নেই; cloud upload করা যায়নি।";return;}
+  const files=[...(e.target.files||[])];let ok=0;
+  for(const file of files){
+   if(!/^image\/(png|jpeg|webp)$/.test(file.type)||file.size>5*1024*1024)continue;
+   const path="uploads/"+Date.now()+"-"+crypto.randomUUID()+"-"+file.name.replace(/[^a-zA-Z0-9._-]/g,"_");
+   const {error}=await client.storage.from("erp-photos").upload(path,file,{contentType:file.type,upsert:false});
+   if(!error){ok++;const img=document.createElement("img");img.alt=file.name;img.src=URL.createObjectURL(file);img.style.maxWidth="130px";img.style.maxHeight="130px";$("photoManagerPreview").appendChild(img);}
+  }
+  $("photoManagerStatus").textContent=ok+"টি ছবি private Supabase storage-এ upload হয়েছে।";
+ });
+ $("downloadLocalBackup").addEventListener("click",async()=>{
+  if(!ready){$("backupStatus").textContent="Admin Supabase session ছাড়া database backup নেওয়া যাবে না।";return;}
+  const tables=["customers","customer_ledger","erp_medicines","erp_medicine_batches","erp_sales_invoices","erp_sales_invoice_items","erp_purchase_invoices","erp_purchase_invoice_items","erp_suppliers","erp_employees","erp_attendance","erp_employee_payroll","erp_accounts","erp_account_transactions","erp_branches","erp_shop_settings","erp_invoice_settings"];
+  const backup={product:"Bishal Medicine Point ERP data export",createdAt:new Date().toISOString(),tables:{}};
+  for(const table of tables){const {data,error}=await client.from(table).select("*").limit(10000);if(error){$("backupStatus").textContent="Backup থেমেছে ("+table+"): "+error.message;return;}backup.tables[table]=data;}
+  const blob=new Blob([JSON.stringify(backup,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="bmp-erp-database-export-"+new Date().toISOString().slice(0,10)+".json";a.click();URL.revokeObjectURL(url);$("backupStatus").textContent="Database JSON export তৈরি হয়েছে। এটি export; full restore tool এখনো নেই।";
+ });
+ $("clearLocalActivity").addEventListener("click",()=>{if(ready)renderLog();});
+ connect();
+})();
+
 /* Additional roadmap modules (31-module workspace) */
 (()=>{
  const esc=value=>String(value??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
