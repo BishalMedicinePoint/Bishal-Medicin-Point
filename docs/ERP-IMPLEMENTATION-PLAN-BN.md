@@ -149,4 +149,6 @@ Implement all 30 modules requested by the owner. Preserve the current public med
 - Keep a Super Admin setting for the shop's default paper size, initially Auto Thermal. The POS selector should start with that saved default, while allowing a per-invoice override.
 - The selected format must control the print preview, page width/height, margins, font sizing, line wrapping, and browser print/PDF output.
 - Keep invoice contents, item quantities, prices, discounts, tax (if configured), paid amount, and due amount identical across all paper sizes; only the layout changes.
+- Every invoice must display the shop's current logo prominently in the header, alongside the shop name and contact details. Load the logo from Shop Settings / Photo Management, preserve its aspect ratio, and size it appropriately for the selected paper format. If no logo is configured, show a clear placeholder in preview and let Super Admin upload or replace the logo; do not break invoice printing when the logo is absent.
+- The invoice logo must appear in both print preview and printed/PDF output for all supported paper sizes, including thermal receipts.
 - Add printer-friendly CSS and test thermal printers and standard office printers before production release.
