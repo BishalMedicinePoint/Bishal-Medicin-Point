@@ -179,3 +179,15 @@ Implement all 30 modules requested by the owner. Preserve the current public med
 - Every invoice must display the shop's current logo prominently in the header, alongside the shop name and contact details. Load the logo from Shop Settings / Photo Management, preserve its aspect ratio, and size it appropriately for the selected paper format. If no logo is configured, show a clear placeholder in preview and let Super Admin upload or replace the logo; do not break invoice printing when the logo is absent.
 - The invoice logo must appear in both print preview and printed/PDF output for all supported paper sizes, including thermal receipts.
 - Add printer-friendly CSS and test thermal printers and standard office printers before production release.
+
+## Staff sales and monthly attendance reports
+
+- Add a dedicated **Staff Reports** section under Reports, with staff-wise daily and monthly sales summaries.
+- Staff sales reports must show employee name/ID, report date or month, number of sales/invoices, gross sales, discounts, returns, net sales, and payment/due breakdown where available.
+- Add daily staff sales detail and a monthly staff sales summary; calculate sales using the authenticated employee recorded as the transaction's responsible staff member.
+- Add attendance reports with employee name/ID and date-wise Present, Absent, Late, and Leave status.
+- Monthly attendance report must show each calendar day and a summary count of Present Days, Absent Days, Late Days, and Leave Days for each employee.
+- Include staff-wise attendance summary and filters for date range, month, employee, branch, and attendance status where applicable.
+- Provide print, PDF, and Excel export, subject to the employee's report/export permissions.
+- Exclude cancelled/voided sales from net sales; show returns and discounts transparently and prevent double counting.
+- Restrict staff sales, attendance, and payroll-related information to authorized roles; enforce access in database/server logic, not only by hiding report menus.
