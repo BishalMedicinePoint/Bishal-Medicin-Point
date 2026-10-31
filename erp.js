@@ -361,9 +361,10 @@ async function loadPaymentAccountOptions(){
  ["customerPaymentAccount","supplierPaymentAccount","posPaymentAccount","purchasePaymentAccount","salesReturnAccount","payrollAccount","purchaseReturnRefundAccount"].forEach(id=>{const el=$(id);if(el){const old=el.value;el.innerHTML=options;el.value=old;}});
 }
 async function loadCustomerDue(){
+ await loadInventoryBranches();const branch=value("customerDueBranch");if(!branch){say($("customerPaymentStatus"),"Customer Due দেখার জন্য Branch নির্বাচন করুন।");return;}
  const [inv,pay]=await Promise.all([
-  db.from("erp_sales_invoices").select("id,invoice_number,sale_date,total,paid,due,customers(customer_name,mobile_number)").gt("due",0).not("customer_id","is",null).order("sale_date",{ascending:false}).limit(500),
-  db.from("erp_customer_payments").select("created_at,amount,payment_method,reference_number,erp_sales_invoices(invoice_number),customers(customer_name)").order("created_at",{ascending:false}).limit(50)
+  db.from("erp_sales_invoices").select("id,invoice_number,sale_date,total,paid,due,customers(customer_name,mobile_number)").eq("branch_id",branch).gt("due",0).not("customer_id","is",null).order("sale_date",{ascending:false}).limit(500),
+  db.from("erp_customer_payments").select("created_at,amount,payment_method,reference_number,erp_sales_invoices!inner(invoice_number,branch_id),customers(customer_name)").eq("erp_sales_invoices.branch_id",branch).order("created_at",{ascending:false}).limit(50)
  ]);
  if(inv.error){say($("customerPaymentStatus"),"Due list load হয়নি: "+inv.error.message,true);return;}
  const rows=inv.data||[];
@@ -388,7 +389,7 @@ $("recordCustomerPaymentBtn").onclick=async()=>{
  say($("customerPaymentStatus"),"Payment সফল: "+data.invoice_number+" · বাকি Due ৳ "+purMoney(data.due));
  await loadCustomerDue();await loadPaymentAccountOptions();
 };
-$("refreshCustomerDueBtn").onclick=loadCustomerDue;
+$("refreshCustomerDueBtn").onclick=loadCustomerDue;$("customerDueBranch").onchange=loadCustomerDue;
 $("customerDueTab").onclick=async()=>{
  ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","salesReturnModule","employeeModule"].forEach(id=>$(id).hidden=true);
  $("customerDueModule").hidden=false;$("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;
@@ -805,10 +806,11 @@ function renderDueOverview(){
  $("dueOverviewRows").innerHTML=rows.length?rows.map(r=>'<tr><td>'+safe(r.type==="customer"?"Customer Receivable":"Supplier Payable")+'</td><td>'+safe(r.invoice)+'</td><td>'+safe(r.date)+'</td><td>'+safe(r.party)+'</td><td>'+money(r.total)+'</td><td>'+money(r.paid)+'</td><td>'+money(r.due)+'</td></tr>').join(""):'<tr><td colspan="7">এই Filter-এ কোনো Due পাওয়া যায়নি।</td></tr>';
 }
 async function loadDueOverview(){
+ await loadInventoryBranches();const branch=value("dueOverviewBranch");if(!branch){say($("dueOverviewStatus"),"Due Overview দেখার জন্য Branch নির্বাচন করুন।");return;}
  $("dueOverviewRows").innerHTML='<tr><td colspan="7">Due তথ্য লোড হচ্ছে...</td></tr>';
  const [c,s]=await Promise.all([
-  db.from("erp_sales_invoices").select("invoice_number,sale_date,total,paid,due,customers(customer_name)").gt("due",0).order("sale_date",{ascending:false}).limit(1000),
-  db.from("erp_purchase_invoices").select("purchase_number,purchase_date,total,paid,due,erp_suppliers(supplier_name)").gt("due",0).order("purchase_date",{ascending:false}).limit(1000)
+  db.from("erp_sales_invoices").select("invoice_number,sale_date,total,paid,due,customers(customer_name)").eq("branch_id",branch).gt("due",0).order("sale_date",{ascending:false}).limit(1000),
+  db.from("erp_purchase_invoices").select("purchase_number,purchase_date,total,paid,due,erp_suppliers(supplier_name)").eq("branch_id",branch).gt("due",0).order("purchase_date",{ascending:false}).limit(1000)
  ]);
  if(c.error||s.error){say($("dueOverviewStatus"),"Due তথ্য লোড হয়নি: "+(c.error?.message||s.error?.message),true);return;}
  const customer=(c.data||[]).map(x=>({type:"customer",invoice:x.invoice_number,date:x.sale_date,party:x.customers?.customer_name||"Walk-in",total:Number(x.total),paid:Number(x.paid),due:Number(x.due)}));
@@ -819,7 +821,7 @@ async function loadDueOverview(){
  $("overviewNetDue").textContent=payrollMoney(cDue-sDue);$("overviewDueCount").textContent=dueOverviewRows.length;
  renderDueOverview();say($("dueOverviewStatus"),"Customer ও Supplier-এর outstanding invoice একসাথে দেখানো হয়েছে। Customer payment নিতে Customer Due & Payment এবং Supplier payment দিতে Purchase Management ব্যবহার করুন।");
 }
-$("refreshDueOverviewBtn").onclick=loadDueOverview;
+$("refreshDueOverviewBtn").onclick=loadDueOverview;$("dueOverviewBranch").onchange=loadDueOverview;
 $("dueOverviewSearch").oninput=renderDueOverview;$("dueOverviewType").onchange=renderDueOverview;
 $("dueOverviewTab").onclick=async()=>{
  ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","employeeModule","attendanceModule"].forEach(id=>{const el=$(id);if(el)el.hidden=true;});
@@ -874,16 +876,17 @@ $("profitLossMonth").value=new Date().toISOString().slice(0,7);
 
 
 async function loadFinancialReports(){
+ await loadInventoryBranches();const branch=value("financialReportBranch");if(!branch){say($("financialReportStatus"),"Financial Report-এর জন্য Branch নির্বাচন করুন।");return;}
  const month=value("financialReportMonth");if(!month){say($("financialReportStatus"),"Report Month নির্বাচন করুন।",true);return;}
  const start=month+"-01",end=new Date(Number(month.slice(0,4)),Number(month.slice(5,7)),1).toISOString().slice(0,10),tsEnd=end+"T00:00:00";
  $("financialReportRows").innerHTML='<tr><td colspan="3">Report তৈরি হচ্ছে...</td></tr>';
  const requests=[
-  db.from("erp_sales_invoices").select("id,total,paid,due").gte("sale_date",start+"T00:00:00").lt("sale_date",tsEnd).neq("status","cancelled").limit(5000),
-  db.from("erp_purchase_invoices").select("total,paid,due").gte("purchase_date",start+"T00:00:00").lt("purchase_date",tsEnd).neq("status","cancelled").limit(5000),
-  db.from("erp_customer_payments").select("amount").gte("created_at",start+"T00:00:00").lt("created_at",tsEnd).limit(5000),
-  db.from("erp_supplier_payments").select("amount").gte("created_at",start+"T00:00:00").lt("created_at",tsEnd).limit(5000),
-  db.from("erp_sales_returns").select("return_total,refund_amount").gte("created_at",start+"T00:00:00").lt("created_at",tsEnd).limit(5000),
-  db.from("erp_purchase_returns").select("return_total").gte("created_at",start+"T00:00:00").lt("created_at",tsEnd).limit(5000),
+  db.from("erp_sales_invoices").select("id,total,paid,due").eq("branch_id",branch).gte("sale_date",start+"T00:00:00").lt("sale_date",tsEnd).neq("status","cancelled").limit(5000),
+  db.from("erp_purchase_invoices").select("total,paid,due").eq("branch_id",branch).gte("purchase_date",start+"T00:00:00").lt("purchase_date",tsEnd).neq("status","cancelled").limit(5000),
+  db.from("erp_customer_payments").select("amount,erp_sales_invoices!inner(branch_id)").eq("erp_sales_invoices.branch_id",branch).gte("created_at",start+"T00:00:00").lt("created_at",tsEnd).limit(5000),
+  db.from("erp_supplier_payments").select("amount,erp_purchase_invoices!inner(branch_id)").eq("erp_purchase_invoices.branch_id",branch).gte("created_at",start+"T00:00:00").lt("created_at",tsEnd).limit(5000),
+  db.from("erp_sales_returns").select("return_total,refund_amount,erp_sales_invoices!inner(branch_id)").eq("erp_sales_invoices.branch_id",branch).gte("created_at",start+"T00:00:00").lt("created_at",tsEnd).limit(5000),
+  db.from("erp_purchase_returns").select("return_total,erp_purchase_invoices!inner(branch_id)").eq("erp_purchase_invoices.branch_id",branch).gte("created_at",start+"T00:00:00").lt("created_at",tsEnd).limit(5000),
   db.from("erp_account_transactions").select("transaction_type,amount").gte("transaction_date",start).lt("transaction_date",end).limit(5000)
  ];
  const results=await Promise.all(requests),bad=results.find(x=>x.error);
@@ -912,7 +915,7 @@ async function loadFinancialReports(){
  $("financialReportRows").innerHTML=rows.map(r=>'<tr><td>'+safe(r[0])+'</td><td>'+r[1]+'</td><td>'+fmt(r[2])+'</td></tr>').join("");
  say($("financialReportStatus"),"Financial Activity Report তৈরি হয়েছে: "+month+". "+(results.some(x=>(x.data||[]).length>=5000)?"কোনো তালিকা ৫,০০০ রেকর্ড সীমায় পৌঁছেছে।":""));
 }
-$("refreshFinancialReportsBtn").onclick=loadFinancialReports;$("financialReportMonth").onchange=loadFinancialReports;
+$("refreshFinancialReportsBtn").onclick=loadFinancialReports;$("financialReportBranch").onchange=loadFinancialReports;$("financialReportMonth").onchange=loadFinancialReports;
 $("financialReportsTab").onclick=async()=>{
  ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","employeeModule","attendanceModule","dueOverviewModule","accountsModule","payrollModule","permissionsModule","profitLossModule"].forEach(id=>{const el=$(id);if(el)el.hidden=true;});
  $("customerModulePanel").hidden=true;$("customerFormPanel").hidden=true;$("financialReportsModule").hidden=false;
@@ -927,7 +930,7 @@ async function loadStockReports(){
  const status=$("stockReportStatus"),body=$("stockReportRows");say(status,"Stock Report তৈরি হচ্ছে...");body.innerHTML='<tr><td colspan="10">তথ্য লোড হচ্ছে...</td></tr>';
  const [med,batch]=await Promise.all([
   db.from("erp_medicines").select("id,medicine_name,generic_name,barcode,is_active").eq("is_active",true).order("medicine_name").limit(10000),
-  db.from("erp_medicine_batches").select("id,medicine_id,batch_number,expiry_date,quantity_available,purchase_price,mrp,is_active,erp_medicines(medicine_name,barcode)").eq("is_active",true).order("expiry_date").limit(20000)
+  db.from("erp_medicine_batches").select("id,medicine_id,batch_number,expiry_date,quantity_available,purchase_price,mrp,is_active,erp_medicines(medicine_name,barcode)").eq("branch_id",branch).eq("is_active",true).order("expiry_date").limit(20000)
  ]);
  if(med.error||batch.error){say(status,"Stock Report load হয়নি: "+(med.error||batch.error).message,true);body.innerHTML='<tr><td colspan="10">তথ্য পাওয়া যায়নি।</td></tr>';return;}
  const medicines=med.data||[],batches=batch.data||[],now=today(),soonD=new Date();soonD.setDate(soonD.getDate()+90);const soon=soonD.getFullYear()+"-"+String(soonD.getMonth()+1).padStart(2,"0")+"-"+String(soonD.getDate()).padStart(2,"0");
@@ -953,7 +956,7 @@ function renderStockReports(){
  $("stockReportRows").innerHTML=rows.length?rows.slice(0,1000).map(x=>{const expired=x.expiry!=="—"&&x.expiry<d.now,soon=x.expiry!=="—"&&x.expiry>=d.now&&x.expiry<=d.soon;const status=x.qty<=0?"Zero Stock":expired?"Expired":soon?"Expiring Soon":d.lowIds.has(x.medicineId)?"Low Stock":"Available";return '<tr><td>'+safe(x.medicine)+'</td><td>'+safe(x.barcode)+'</td><td>'+safe(x.batch)+'</td><td>'+safe(x.expiry)+'</td><td>'+x.qty+'</td><td>'+payrollMoney(x.purchase)+'</td><td>'+payrollMoney(x.mrp)+'</td><td>'+payrollMoney(expired?0:x.qty*x.purchase)+'</td><td>'+payrollMoney(expired?0:x.qty*x.mrp)+'</td><td>'+safe(status)+'</td></tr>';}).join(""):'<tr><td colspan="10">এই Filter-এ কোনো Stock record নেই।</td></tr>';
  if(rows.length>1000)say($("stockReportStatus"),"প্রথম ১,০০০টি matching row দেখানো হয়েছে; Search দিয়ে আরও নির্দিষ্ট করুন।");
 }
-$("stockReportSearch").oninput=renderStockReports;$("stockReportFilter").onchange=renderStockReports;$("refreshStockReportsBtn").onclick=loadStockReports;
+$("stockReportSearch").oninput=renderStockReports;$("stockReportFilter").onchange=renderStockReports;$("refreshStockReportsBtn").onclick=loadStockReports;$("stockReportBranch").onchange=loadStockReports;
 $("stockReportsTab").onclick=async()=>{
  ["customerModulePanel","customerFormPanel","medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","employeeModule","attendanceModule","permissionsModule","payrollModule","accountsModule","dueOverviewModule","profitLossModule","financialReportsModule"].forEach(id=>{const el=$(id);if(el)el.hidden=true;});
  $("stockReportsModule").hidden=false;document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));$("stockReportsTab").classList.add("active");await loadStockReports();
