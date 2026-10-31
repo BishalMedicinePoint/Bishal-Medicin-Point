@@ -1026,3 +1026,31 @@ document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="dashboardTab")t.addEven
  $("zoomReset").onclick=()=>{zoom=100;applyZoom();};
  applyTheme();applyZoom();
 })();
+
+/* Export visible ERP report/table data */
+(()=>{
+ const csvCell=v=>{const s=String(v??"").replace(/\s+/g," ").trim();return '"'+s.replace(/"/g,'""')+'"';};
+ function activeModule(){
+  const ids=["dashboardModule","customerModulePanel","medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","employeeModule","attendanceModule","permissionsModule","payrollModule","accountsModule","dueOverviewModule","profitLossModule","financialReportsModule","stockReportsModule","employeeReportsModule"];
+  return ids.map(id=>$(id)).find(el=>el&&!el.hidden)||document.querySelector("#workspace .panel:not([hidden])");
+ }
+ $("exportExcelBtn").onclick=()=>{
+  const module=activeModule();if(!module){alert("Export করার মতো কোনো Module পাওয়া যায়নি।");return;}
+  const tables=[...module.querySelectorAll("table")].filter(t=>t.querySelector("tbody tr")&&!t.closest("[hidden]"));
+  if(!tables.length){alert("এই Module-এ Export করার মতো Table নেই।");return;}
+  const lines=[];
+  tables.forEach((table,index)=>{
+   if(index)lines.push("");
+   const title=module.querySelector("h2")?.textContent||"Bishal Medicine Point ERP";
+   lines.push(csvCell(title));
+   [...table.querySelectorAll("tr")].forEach(tr=>lines.push([...tr.querySelectorAll("th,td")].map(cell=>csvCell(cell.innerText)).join(",")));
+  });
+  const blob=new Blob(["\uFEFF"+lines.join("\r\n")],{type:"text/csv;charset=utf-8;"});
+  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="bishal-medicine-point-erp-"+today()+".csv";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+ };
+ $("exportPdfBtn").onclick=()=>{
+  const module=activeModule();if(!module){alert("PDF তৈরি করার মতো Module পাওয়া যায়নি।");return;}
+  const title=module.querySelector("h2")?.textContent||"Bishal Medicine Point ERP";
+  const old=document.title;document.title=title+" - Bishal Medicine Point";window.print();document.title=old;
+ };
+})();
