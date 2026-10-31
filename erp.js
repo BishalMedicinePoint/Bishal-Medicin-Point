@@ -345,7 +345,7 @@ async function loadPaymentAccountOptions(){
  const {data,error}=await db.from("erp_accounts").select("id,account_name,account_type").eq("is_active",true).order("account_name");
  if(error){say($("customerPaymentStatus"),"Account list load হয়নি: "+error.message,true);say($("supplierPaymentStatus"),"Account list load হয়নি: "+error.message,true);return;}
  const options='<option value="">Account নির্বাচন করুন</option>'+(data||[]).map(a=>'<option value="'+safe(a.id)+'">'+safe(a.account_name)+' · '+safe(a.account_type)+'</option>').join("");
- ["customerPaymentAccount","supplierPaymentAccount","posPaymentAccount","purchasePaymentAccount"].forEach(id=>{const el=$(id);if(el){const old=el.value;el.innerHTML=options;el.value=old;}});
+ ["customerPaymentAccount","supplierPaymentAccount","posPaymentAccount","purchasePaymentAccount","salesReturnAccount"].forEach(id=>{const el=$(id);if(el){const old=el.value;el.innerHTML=options;el.value=old;}});
 }
 async function loadCustomerDue(){
  const [inv,pay]=await Promise.all([
@@ -511,12 +511,12 @@ $("submitSalesReturnBtn").onclick=async()=>{
  const item=salesReturnOptions.find(x=>x.id===value("salesReturnItem"));
  const qty=Math.floor(Number(value("salesReturnQty"))||0),condition=value("salesReturnCondition");
  const refund=Number(value("salesReturnRefund")),reason=value("salesReturnReason").trim();
- if(!activeUser||activeUser.id!==ADMIN_UID||!item||qty<1||qty>item.remaining||!reason||!Number.isFinite(refund)||refund<0||refund>qty*Number(item.unit_price)){
+ if(!activeUser||activeUser.id!==ADMIN_UID||!item||qty<1||qty>item.remaining||!reason||!Number.isFinite(refund)||refund<0||refund>qty*Number(item.unit_price)||(refund>0&&!value("salesReturnAccount"))){
   say($("salesReturnStatus"),"Invoice item, সঠিক Quantity, Refund Amount ও Return Reason দিন।",true);return;
  }
  if(!confirm("Sales Return সংরক্ষণ করবেন? Quantity: "+qty+" · Condition: "+condition+" · Refund: ৳ "+purMoney(refund)))return;
  $("submitSalesReturnBtn").disabled=true;
- const {data,error}=await db.rpc("bmp_create_sales_return",{p_invoice_item_id:item.id,p_quantity:qty,p_condition:condition,p_refund_amount:refund,p_reason:reason});
+ const {data,error}=await db.rpc("bmp_create_sales_return",{p_invoice_item_id:item.id,p_quantity:qty,p_condition:condition,p_refund_amount:refund,p_reason:reason,p_account_id:refund>0?value("salesReturnAccount"):null});
  $("submitSalesReturnBtn").disabled=false;
  if(error){say($("salesReturnStatus"),"Return সংরক্ষণ হয়নি: "+error.message,true);return;}
  say($("salesReturnStatus"),"Return সফল: "+data.return_number+" · Return Value ৳ "+purMoney(data.return_total)+" · Invoice Due ৳ "+purMoney(data.invoice_due));
