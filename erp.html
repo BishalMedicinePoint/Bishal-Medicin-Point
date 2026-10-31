@@ -66,6 +66,14 @@
 <label class="full">Notes<textarea id="purchaseNotes" rows="2" maxlength="500"></textarea></label>
 <div class="full"><strong>Subtotal: ৳ <span id="purchaseSubtotal">0.00</span> · Total: ৳ <span id="purchaseTotal">0.00</span></strong></div>
 <div class="full form-actions"><button id="completePurchaseBtn" class="btn" type="button">Save Purchase &amp; Add Stock</button><button id="clearPurchaseBtn" class="btn muted" type="button">Clear</button></div></div><p id="purchaseStatus" class="status"></p></div>
+<div class="panel inner-panel"><h3>Supplier Due Payment / Collection</h3><p>Purchase invoice-এর বকেয়া থেকে আংশিক বা সম্পূর্ণ টাকা পরিশোধ করুন।</p>
+<div class="form-grid"><label class="full">Purchase Invoice<select id="supplierDuePurchase"><option value="">বকেয়া Purchase নির্বাচন করুন</option></select></label>
+<label>Payment Amount (৳)<input id="supplierPaymentAmount" type="number" min="0.01" step="0.01" value="0"></label>
+<label>Payment Method<select id="supplierPaymentMethod"><option value="cash">Cash</option><option value="bank">Bank</option><option value="mobile_banking">Mobile Banking</option><option value="card">Card</option><option value="other">Other</option></select></label>
+<label>Reference Number<input id="supplierPaymentReference" maxlength="120"></label><label>Note<input id="supplierPaymentNote" maxlength="300"></label>
+<div class="full"><strong>Selected Invoice Due: ৳ <span id="supplierSelectedDue">0.00</span></strong></div>
+<div class="full form-actions"><button id="recordSupplierPaymentBtn" class="btn" type="button">Record Supplier Payment</button></div></div><p id="supplierPaymentStatus" class="status"></p>
+<h3>Recent Supplier Payments</h3><div class="table-wrap"><table><thead><tr><th>Date</th><th>Purchase No.</th><th>Supplier</th><th>Amount</th><th>Method</th><th>Reference</th></tr></thead><tbody id="supplierPaymentRows"><tr><td colspan="6">Payment history load হয়নি।</td></tr></tbody></table></div></div>
 <div class="panel inner-panel"><h3>Recent Purchases</h3><div class="table-wrap"><table><thead><tr><th>Purchase No.</th><th>Date</th><th>Supplier</th><th>Total</th><th>Paid</th><th>Due</th></tr></thead><tbody id="purchaseRows"><tr><td colspan="6">Purchase list load হয়নি।</td></tr></tbody></table></div></div>
 </section>
 <section id="posModule" class="panel" hidden>
