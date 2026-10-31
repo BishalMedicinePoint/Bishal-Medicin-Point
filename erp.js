@@ -771,4 +771,38 @@ $("accountsTab").onclick=async()=>{
 $("transactionDate").value=today();
 $("accountTransactionMonth").value=new Date().toISOString().slice(0,7);
 
+
+let dueOverviewRows=[];
+function renderDueOverview(){
+ const term=value("dueOverviewSearch").toLowerCase(),type=value("dueOverviewType");
+ const rows=dueOverviewRows.filter(r=>(type==="all"||r.type===type)&&[r.invoice,r.party,r.type].some(v=>String(v||"").toLowerCase().includes(term)));
+ $("dueOverviewRows").innerHTML=rows.length?rows.map(r=>'<tr><td>'+safe(r.type==="customer"?"Customer Receivable":"Supplier Payable")+'</td><td>'+safe(r.invoice)+'</td><td>'+safe(r.date)+'</td><td>'+safe(r.party)+'</td><td>'+money(r.total)+'</td><td>'+money(r.paid)+'</td><td>'+money(r.due)+'</td></tr>').join(""):'<tr><td colspan="7">এই Filter-এ কোনো Due পাওয়া যায়নি।</td></tr>';
+}
+async function loadDueOverview(){
+ $("dueOverviewRows").innerHTML='<tr><td colspan="7">Due তথ্য লোড হচ্ছে...</td></tr>';
+ const [c,s]=await Promise.all([
+  db.from("erp_sales_invoices").select("invoice_number,sale_date,total,paid,due,customers(customer_name)").gt("due",0).order("sale_date",{ascending:false}).limit(1000),
+  db.from("erp_purchase_invoices").select("purchase_number,purchase_date,total,paid,due,erp_suppliers(supplier_name)").gt("due",0).order("purchase_date",{ascending:false}).limit(1000)
+ ]);
+ if(c.error||s.error){say($("dueOverviewStatus"),"Due তথ্য লোড হয়নি: "+(c.error?.message||s.error?.message),true);return;}
+ const customer=(c.data||[]).map(x=>({type:"customer",invoice:x.invoice_number,date:x.sale_date,party:x.customers?.customer_name||"Walk-in",total:Number(x.total),paid:Number(x.paid),due:Number(x.due)}));
+ const supplier=(s.data||[]).map(x=>({type:"supplier",invoice:x.purchase_number,date:x.purchase_date,party:x.erp_suppliers?.supplier_name||"",total:Number(x.total),paid:Number(x.paid),due:Number(x.due)}));
+ dueOverviewRows=[...customer,...supplier].sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+ const cDue=customer.reduce((a,x)=>a+x.due,0),sDue=supplier.reduce((a,x)=>a+x.due,0);
+ $("overviewCustomerDue").textContent=payrollMoney(cDue);$("overviewSupplierDue").textContent=payrollMoney(sDue);
+ $("overviewNetDue").textContent=payrollMoney(cDue-sDue);$("overviewDueCount").textContent=dueOverviewRows.length;
+ renderDueOverview();say($("dueOverviewStatus"),"Customer ও Supplier-এর outstanding invoice একসাথে দেখানো হয়েছে। Customer payment নিতে Customer Due & Payment এবং Supplier payment দিতে Purchase Management ব্যবহার করুন।");
+}
+$("refreshDueOverviewBtn").onclick=loadDueOverview;
+$("dueOverviewSearch").oninput=renderDueOverview;$("dueOverviewType").onchange=renderDueOverview;
+$("dueOverviewTab").onclick=async()=>{
+ ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","employeeModule","attendanceModule"].forEach(id=>{const el=$(id);if(el)el.hidden=true;});
+ $("customerModulePanel").hidden=true;$("customerFormPanel").hidden=true;
+ ["permissionsModule","payrollModule","accountsModule"].forEach(id=>$(id).hidden=true);
+ $("dueOverviewModule").hidden=false;
+ ["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","customerDueTab","salesReturnTab","purchaseReturnTab","employeesTab","attendanceTab","permissionsTab","payrollTab","accountsTab"].forEach(id=>$(id).classList.remove("active"));
+ $("dueOverviewTab").classList.add("active");await loadDueOverview();
+};
+["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","customerDueTab","salesReturnTab","purchaseReturnTab","employeesTab","attendanceTab","permissionsTab","payrollTab","accountsTab"].forEach(id=>{const tab=$(id);if(tab)tab.addEventListener("click",()=>{$("dueOverviewModule").hidden=true;});});
+
 })();
