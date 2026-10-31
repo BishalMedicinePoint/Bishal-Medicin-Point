@@ -142,13 +142,30 @@ Implement all 30 modules requested by the owner. Preserve the current public med
 
 ## Customer Add form — confirmed fields
 
-- Keep the Customer Add screen focused on the owner's requested fields, in this order: Customer Name (required), Cell Number (required), Alt Cell, MID (optional), Reference Partner, Postal Address, Internal Notes, and Registration Date.
-- Generate a unique Customer ID automatically in the background; show it as a read-only field if useful, without replacing the requested MID field.
-- Validate required name and cell number; warn about possible duplicate cell numbers and allow authorized staff to review before creating a duplicate.
-- Registration Date should default to the current local date and remain editable by authorized staff.
-- Support Add, Save, Edit, and customer search; link customer records to invoices, purchase history, due balance, and payment ledger.
-- Reference Partner should link to an existing partner when available, with permission-controlled partner creation/management.
-- Do not make optional fields mandatory. Keep the form simple and quick for counter staff.
+- Organize the form under the heading **Customer Information**.
+- Show a unique **Customer ID** generated automatically by the system; it is read-only and must not replace MID.
+- Add fields in this order:
+  1. Customer ID (auto-generated, read-only)
+  2. Customer Name (required)
+  3. Mobile Number (required)
+  4. Alternative Phone (optional; includes the previously requested Alt Cell)
+  5. Email (optional)
+  6. MID (optional)
+  7. Reference Partner (optional; select/link an existing partner)
+  8. Customer Type (select from configured customer types; provide a sensible default and allow authorized configuration)
+  9. Address (optional; supports the previously requested Postal Address)
+  10. Previous Due (opening due balance; default zero, entered/adjusted only by authorized staff and recorded as an opening-balance transaction)
+  11. Credit Limit (optional; default zero or no credit limit, with validation)
+  12. Customer Photo (optional; upload, preview, replace, remove, and store securely through Photo Management)
+  13. Notes (optional; includes the previously requested Internal Notes)
+  14. Registration Date (defaults to current local date; editable only by authorized staff)
+- Validate Customer Name and Mobile Number; warn about possible duplicate mobile numbers and let authorized staff review before creating a duplicate.
+- Validate email format when supplied, and validate Previous Due/Credit Limit as non-negative monetary values using the shop's configured currency/precision.
+- Previous Due is an opening balance only; it must be posted to the customer ledger with actor, timestamp, and audit history. Never silently add it to sales or stock.
+- Credit Limit must be checked when recording a credit sale; users without permission cannot override the limit.
+- Support Add, Save, Edit, customer search, and photo management. Link each customer to invoices, purchase/sales history, due balance, collections, and payment ledger.
+- Reference Partner should link to an existing partner where available, with permission-controlled partner creation/management.
+- Keep optional fields optional and make the form quick to use at the sales counter.
 
 ## Invoice paper-size selector and print layouts
 
