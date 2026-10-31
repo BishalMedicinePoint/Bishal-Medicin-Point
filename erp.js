@@ -129,7 +129,7 @@ async function loadBatchMedicineOptions(selected=""){
  $("batchMedicine").innerHTML='<option value="">Medicine নির্বাচন করুন</option>'+(data||[]).map(m=>'<option value="'+safe(m.id)+'">'+safe(m.medicine_name)+(m.strength?" · "+safe(m.strength):"")+(m.brand?" · "+safe(m.brand):"")+'</option>').join("");
  $("batchMedicine").value=selected;
 }
-async function loadInventoryBranches(){const {data,error}=await db.from("erp_branches").select("id,branch_name,branch_code").eq("is_active",true).order("branch_name");if(error){say($("batchStatusText"),"Branch load হয়নি: "+error.message,true);say($("stockStatus"),"Branch load হয়নি: "+error.message,true);return;}for(const id of ["batchBranch","stockBranch","batchFormBranch","customerDueBranch","financialReportBranch","stockReportBranch","dueOverviewBranch"]){const el=$(id);if(!el)continue;const old=el.value;el.innerHTML='<option value="">Branch নির্বাচন করুন</option>'+(data||[]).map(b=>'<option value="'+safe(b.id)+'">'+safe(b.branch_name)+' · '+safe(b.branch_code)+'</option>').join("");if(old&&(data||[]).some(b=>b.id===old))el.value=old;else if(data?.length===1)el.value=data[0].id;}}
+async function loadInventoryBranches(){const {data,error}=await db.from("erp_branches").select("id,branch_name,branch_code").eq("is_active",true).order("branch_name");if(error){say($("batchStatusText"),"Branch load হয়নি: "+error.message,true);say($("stockStatus"),"Branch load হয়নি: "+error.message,true);return;}for(const id of ["batchBranch","stockBranch","batchFormBranch","customerDueBranch","financialReportBranch","stockReportBranch","dueOverviewBranch","employeeBranch","attendanceBranch","payrollBranch"]){const el=$(id);if(!el)continue;const old=el.value;el.innerHTML='<option value="">Branch নির্বাচন করুন</option>'+(data||[]).map(b=>'<option value="'+safe(b.id)+'">'+safe(b.branch_name)+' · '+safe(b.branch_code)+'</option>').join("");if(old&&(data||[]).some(b=>b.id===old))el.value=old;else if(data?.length===1)el.value=data[0].id;}}
 async function loadBatches(){await loadInventoryBranches();
  const body=$("batchRows");if(!body)return;
  body.innerHTML='<tr><td colspan="10">Batch list লোড হচ্ছে...</td></tr>';
@@ -417,7 +417,7 @@ function openEmployeeForm(row=null){
 }
 async function loadEmployees(){
  $("employeeRows").innerHTML='<tr><td colspan="8">তথ্য লোড হচ্ছে...</td></tr>';
- let q=db.from("erp_employees").select("*").order("created_at",{ascending:false});
+ await loadInventoryBranches();let q=db.from("erp_employees").select("*,erp_branches(branch_name)").order("created_at",{ascending:false});
  const status=value("employeeStatusFilter");
  if(status!=="all")q=q.eq("employment_status",status);
  const {data,error}=await q;
@@ -435,7 +435,7 @@ $("employeeForm").onsubmit=async e=>{
  e.preventDefault();if(!activeUser||activeUser.id!==ADMIN_UID)return;
  const id=value("employeeRecordId"),name=value("employeeName"),mobile=value("employeeMobile"),job=value("employeeJobTitle");
  if(!name||!mobile||!job){say($("employeeStatusText"),"Name, Mobile ও Job Title আবশ্যক।",true);return;}
- const row={full_name:name,mobile_number:mobile,alternative_phone:value("employeeAltPhone")||null,email:value("employeeEmail")||null,job_title:job,department:value("employeeDepartment")||null,address:value("employeeAddress")||null,emergency_contact_name:value("employeeEmergencyName")||null,emergency_contact_phone:value("employeeEmergencyPhone")||null,joining_date:value("employeeJoiningDate"),employment_status:value("employeeEmploymentStatus"),notes:value("employeeNotes")||null};
+ if(!value("employeeBranch")){say($("employeeStatusText"),"Employee-এর Branch নির্বাচন করুন।",true);return;}const row={branch_id:value("employeeBranch"),full_name:name,mobile_number:mobile,alternative_phone:value("employeeAltPhone")||null,email:value("employeeEmail")||null,job_title:job,department:value("employeeDepartment")||null,address:value("employeeAddress")||null,emergency_contact_name:value("employeeEmergencyName")||null,emergency_contact_phone:value("employeeEmergencyPhone")||null,joining_date:value("employeeJoiningDate"),employment_status:value("employeeEmploymentStatus"),notes:value("employeeNotes")||null};
  say($("employeeStatusText"),"Employee সংরক্ষণ হচ্ছে...");
  const result=id?await db.from("erp_employees").update(row).eq("id",id).select("id").single():await db.from("erp_employees").insert({...row,created_by:activeUser.id}).select("id,employee_code").single();
  if(result.error){say($("employeeStatusText"),"সংরক্ষণ হয়নি: "+result.error.message,true);return;}
@@ -444,7 +444,7 @@ $("employeeForm").onsubmit=async e=>{
 };
 $("newEmployeeBtn").onclick=()=>openEmployeeForm();
 $("closeEmployeeForm").onclick=$("cancelEmployeeForm").onclick=()=>{$("employeeFormPanel").hidden=true;resetEmployeeForm();};
-$("employeeSearch").oninput=renderEmployees;$("employeeStatusFilter").onchange=loadEmployees;
+$("employeeSearch").oninput=renderEmployees;$("employeeBranch").onchange=loadEmployees;$("employeeStatusFilter").onchange=loadEmployees;
 $("employeesTab").onclick=async()=>{
  ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","employeeModule"].forEach(id=>$(id).hidden=true);
  $("customerModulePanel").hidden=true;$("customerFormPanel").hidden=true;$("employeeModule").hidden=false;
@@ -571,14 +571,14 @@ $("saveFingerprintSettingBtn").onclick=async()=>{
  $("fingerprintModeStatus").textContent=enabled?"Fingerprint System ON — মেশিন এখনো সংযুক্ত নয়; Manual Attendance চালু আছে।":"Fingerprint System OFF — Manual Attendance চালু আছে।";
 };
 async function loadAttendance(){
- if(!activeUser||activeUser.id!==ADMIN_UID)return;
+ if(!activeUser||activeUser.id!==ADMIN_UID)return;await loadInventoryBranches();const branch=value("attendanceBranch");if(!branch){say($("attendanceStatusText"),"Attendance-এর জন্য Branch নির্বাচন করুন।");return;}
  const [emps,month]=await Promise.all([
-  db.from("erp_employees").select("id,employee_code,full_name").eq("employment_status","active").order("full_name"),
+  db.from("erp_employees").select("id,employee_code,full_name").eq("branch_id",branch).eq("employment_status","active").order("full_name"),
   Promise.resolve(attendanceMonthBounds())
  ]);
  if(emps.error){say($("attendanceStatusText"),"Employee load হয়নি: "+emps.error.message,true);return;}
  $("attendanceEmployee").innerHTML='<option value="">Employee নির্বাচন করুন</option>'+(emps.data||[]).map(e=>'<option value="'+e.id+'">'+safe(e.employee_code)+' · '+safe(e.full_name)+'</option>').join("");
- const {data,error}=await db.from("erp_attendance").select("id,employee_id,attendance_date,attendance_status,check_in,check_out,notes,erp_employees(employee_code,full_name)").gte("attendance_date",month.start).lt("attendance_date",month.end).order("attendance_date",{ascending:false}).limit(2000);
+ const {data,error}=await db.from("erp_attendance").select("id,employee_id,attendance_date,attendance_status,check_in,check_out,notes,erp_employees(employee_code,full_name)").eq("branch_id",branch).gte("attendance_date",month.start).lt("attendance_date",month.end).order("attendance_date",{ascending:false}).limit(2000);
  if(error){say($("attendanceStatusText"),"Attendance load হয়নি: "+error.message,true);return;}
  attendanceCache=data||[];renderAttendance();
 }
@@ -598,7 +598,7 @@ $("saveAttendanceBtn").onclick=async()=>{
  const employee=value("attendanceEmployee"),date=value("attendanceDate"),status=value("attendanceStatus"),cin=value("attendanceCheckIn")||null,cout=value("attendanceCheckOut")||null,notes=value("attendanceNotes").trim()||null;
  if(!employee||!date){say($("attendanceStatusText"),"তারিখ ও Employee নির্বাচন করুন।",true);return;}
  if(cin&&cout&&cout<cin){say($("attendanceStatusText"),"Check-out সময় Check-in-এর আগে হতে পারবে না।",true);return;}
- const row={employee_id:employee,attendance_date:date,attendance_status:status,check_in:status==="present"?cin:null,check_out:status==="present"?cout:null,notes,created_by:activeUser.id};
+ const selectedEmployee=(await db.from("erp_employees").select("branch_id").eq("id",employee).single()).data;if(!selectedEmployee||selectedEmployee.branch_id!==value("attendanceBranch")){say($("attendanceStatusText"),"Employee নির্বাচিত Branch-এর নয়।",true);return;}const row={branch_id:value("attendanceBranch"),employee_id:employee,attendance_date:date,attendance_status:status,check_in:status==="present"?cin:null,check_out:status==="present"?cout:null,notes,created_by:activeUser.id};
  $("saveAttendanceBtn").disabled=true;
  const {error}=await db.from("erp_attendance").upsert(row,{onConflict:"employee_id,attendance_date"});
  $("saveAttendanceBtn").disabled=false;
@@ -610,7 +610,7 @@ $("resetAttendanceBtn").onclick=resetAttendanceForm;
 $("refreshAttendanceBtn").onclick=loadAttendance;
 $("attendanceSearch").oninput=renderAttendance;
 $("attendanceFilter").onchange=renderAttendance;
-$("attendanceMonth").onchange=loadAttendance;
+$("attendanceMonth").onchange=loadAttendance;$("attendanceBranch").onchange=loadAttendance;
 $("attendanceTab").onclick=async()=>{
  ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","employeeModule"].forEach(id=>$(id).hidden=true);
  $("attendanceModule").hidden=false;$("customerModulePanel").hidden=true;$("customerFormPanel").hidden=true;
@@ -682,13 +682,13 @@ function payrollNet(){
  $("payrollNetPreview").textContent=payrollMoney(Math.max(0,total));
 }
 async function loadPayrollEmployees(){
- const {data,error}=await db.from("erp_employees").select("id,employee_code,full_name").order("full_name");
+ await loadInventoryBranches();const branch=value("payrollBranch");if(!branch){say($("payrollStatus"),"Payroll-এর জন্য Branch নির্বাচন করুন।");return;}const {data,error}=await db.from("erp_employees").select("id,employee_code,full_name").eq("branch_id",branch).order("full_name");
  if(error){say($("payrollStatus"),"Employee load হয়নি: "+error.message,true);return;}
  $("payrollEmployee").innerHTML='<option value="">Employee নির্বাচন করুন</option>'+(data||[]).map(e=>'<option value="'+e.id+'">'+safe(e.employee_code)+' · '+safe(e.full_name)+'</option>').join("");
 }
 async function loadPayroll(){
  const month=value("payrollFilterMonth");
- let q=db.from("erp_employee_payroll").select("*,erp_employees(employee_code,full_name)").order("payroll_month",{ascending:false}).limit(500);
+ await loadInventoryBranches();const branch=value("payrollBranch");if(!branch){say($("payrollStatus"),"Payroll-এর জন্য Branch নির্বাচন করুন।");return;}let q=db.from("erp_employee_payroll").select("*,erp_employees(employee_code,full_name)").eq("branch_id",branch).order("payroll_month",{ascending:false}).limit(500);
  if(month)q=q.eq("payroll_month",month+"-01");
  const {data,error}=await q;
  if(error){say($("payrollStatus"),"Payroll load হয়নি: "+error.message,true);return;}
@@ -721,7 +721,7 @@ $("payrollForm").onsubmit=async e=>{
  $("payrollForm").reset();$("payrollMonth").value=new Date().toISOString().slice(0,7);$("payrollPaymentStatus").value="pending";payrollNet();await loadPayroll();
 };
 $("resetPayrollBtn").onclick=()=>{$("payrollForm").reset();$("payrollMonth").value=new Date().toISOString().slice(0,7);$("payrollNetPreview").textContent="৳ 0.00";};
-$("refreshPayrollBtn").onclick=loadPayroll;$("payrollSearch").oninput=renderPayroll;$("payrollFilterMonth").onchange=loadPayroll;
+$("refreshPayrollBtn").onclick=loadPayroll;$("payrollBranch").onchange=async()=>{await loadPayrollEmployees();await loadPayroll();};$("payrollSearch").oninput=renderPayroll;$("payrollFilterMonth").onchange=loadPayroll;
 $("payrollTab").onclick=async()=>{
  ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","employeeModule","attendanceModule"].forEach(id=>{const el=$(id);if(el)el.hidden=true;});
  $("customerModulePanel").hidden=true;$("customerFormPanel").hidden=true;$("permissionsModule").hidden=true;$("payrollModule").hidden=false;
