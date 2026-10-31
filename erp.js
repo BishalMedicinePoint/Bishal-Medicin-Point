@@ -62,6 +62,10 @@ $("customerForm").onsubmit=async e=>{
  e.preventDefault();if(!activeUser||activeUser.id!==ADMIN_UID)return;
  const id=value("recordId"),mobile=value("mobile"),name=value("customerName");
  if(!name||!mobile){say($("pageStatus"),"Customer Name এবং Mobile Number আবশ্যক।",true);return;}
+ const duplicateQuery=await db.from("customers").select("id,customer_name,mobile_number").eq("mobile_number",mobile).eq("is_active",true);
+ if(duplicateQuery.error){say($("pageStatus"),"Duplicate check করা যায়নি: "+duplicateQuery.error.message,true);return;}
+ const duplicates=(duplicateQuery.data||[]).filter(c=>c.id!==id);
+ if(duplicates.length&&!confirm("এই Mobile Number দিয়ে আগে Customer আছে ("+duplicates.map(c=>c.customer_name).join(", ")+")। তারপরও সংরক্ষণ করবে?"))return;
  const previousDue=Number(value("previousDue")||0),creditLimit=Number(value("creditLimit")||0);
  if(!id&&(previousDue<0||creditLimit<0)){say($("pageStatus"),"Due ও Credit Limit ঋণাত্মক হতে পারবে না।",true);return;}
  say($("pageStatus"),"Customer সংরক্ষণ হচ্ছে...");
