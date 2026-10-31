@@ -1031,7 +1031,7 @@ document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="dashboardTab")t.addEven
 (()=>{
  const csvCell=v=>{const s=String(v??"").replace(/\s+/g," ").trim();return '"'+s.replace(/"/g,'""')+'"';};
  function activeModule(){
-  const ids=["dashboardModule","customerModulePanel","medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","employeeModule","attendanceModule","permissionsModule","payrollModule","accountsModule","dueOverviewModule","profitLossModule","financialReportsModule","stockReportsModule","employeeReportsModule"];
+  const ids=["dashboardModule","customerModulePanel","medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","employeeModule","attendanceModule","permissionsModule","payrollModule","accountsModule","dueOverviewModule","profitLossModule","financialReportsModule","stockReportsModule","employeeReportsModule","suppliersModule","invoiceSettingsModule","shopSettingsModule","branchesModule","onlineWebsiteModule","onlineOrdersModule","backupModule","activityLogModule","photoManagementModule","fingerprintModule"];
   return ids.map(id=>$(id)).find(el=>el&&!el.hidden)||document.querySelector("#workspace .panel:not([hidden])");
  }
  $("exportExcelBtn").onclick=()=>{
@@ -1051,7 +1051,7 @@ document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="dashboardTab")t.addEven
  $("exportPdfBtn").onclick=()=>{
   const module=activeModule();if(!module){alert("PDF তৈরি করার মতো Module পাওয়া যায়নি।");return;}
   const title=module.querySelector("h2")?.textContent||"Bishal Medicine Point ERP";
-  const old=document.title;document.title=title+" - Bishal Medicine Point";window.print();document.title=old;
+  const old=document.title;document.title=title+" - Bishal Medicine Point";module.classList.add("print-active");document.body.classList.add("bmp-print-target");window.print();setTimeout(()=>{module.classList.remove("print-active");document.body.classList.remove("bmp-print-target");document.title=old;},300);
  };
 })();
 
