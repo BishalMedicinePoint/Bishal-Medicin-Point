@@ -118,8 +118,8 @@ $("medicineForm").onsubmit=async e=>{e.preventDefault();if(!activeUser||activeUs
 };
 $("newMedicineBtn").onclick=()=>openMedicine();$("closeMedicineForm").onclick=$("cancelMedicineForm").onclick=()=>{$("medicineFormPanel").hidden=true;};
 $("medicineSearch").oninput=loadMedicines;$("medicineStatus").onchange=loadMedicines;
-$("customersTab").onclick=()=>{$("medicineModule").hidden=true;$("batchModule").hidden=true;$("newCustomerBtn").closest(".panel").hidden=false;$("customerFormPanel").hidden=true;$("customersTab").classList.add("active");$("medicinesTab").classList.remove("active");};
-$("medicinesTab").onclick=()=>{$("batchModule").hidden=true;$("medicineModule").hidden=false;$("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;$("medicinesTab").classList.add("active");$("customersTab").classList.remove("active");loadMedicines();};
+$("customersTab").onclick=()=>{$("medicineModule").hidden=true;$("batchModule").hidden=true;$("barcodeModule").hidden=true;$("newCustomerBtn").closest(".panel").hidden=false;$("customerFormPanel").hidden=true;$("customersTab").classList.add("active");$("medicinesTab").classList.remove("active");};
+$("medicinesTab").onclick=()=>{$("batchModule").hidden=true;$("barcodeModule").hidden=true;$("medicineModule").hidden=false;$("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;$("medicinesTab").classList.add("active");$("customersTab").classList.remove("active");loadMedicines();};
 
 
 async function loadBatchMedicineOptions(selected=""){
@@ -183,10 +183,70 @@ $("newBatchBtn").onclick=()=>openBatch();
 $("closeBatchForm").onclick=$("cancelBatchForm").onclick=()=>{$("batchFormPanel").hidden=true;$("batchMedicine").disabled=false;$("batchQuantity").disabled=false;};
 $("batchSearch").oninput=loadBatches;$("batchExpiryFilter").onchange=loadBatches;
 $("batchesTab").onclick=()=>{
- $("medicineModule").hidden=true;$("batchModule").hidden=false;
+ $("medicineModule").hidden=true;$("barcodeModule").hidden=true;$("batchModule").hidden=false;
  $("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;
  $("batchesTab").classList.add("active");$("customersTab").classList.remove("active");$("medicinesTab").classList.remove("active");
  loadBatches();
+};
+
+
+let barcodeMedicines=[];
+async function loadBarcodeMedicines(){
+ const body=$("barcodeRows");if(!body)return;
+ body.innerHTML='<tr><td colspan="4">Medicine list লোড হচ্ছে...</td></tr>';
+ const {data,error}=await db.from("erp_medicines").select("id,medicine_name,brand,strength,barcode,is_active").order("medicine_name");
+ if(error){body.innerHTML='<tr><td colspan="4">তথ্য আনা যায়নি।</td></tr>';say($("barcodeStatus"),"Barcode list load হয়নি: "+error.message,true);return;}
+ barcodeMedicines=data||[];renderBarcodeRows();
+}
+function renderBarcodeRows(){
+ const term=value("barcodeSearch").toLowerCase(),filter=$("barcodeFilter").value;
+ const rows=barcodeMedicines.filter(m=>{
+  const match=[m.medicine_name,m.brand,m.barcode,m.strength].some(v=>String(v||"").toLowerCase().includes(term));
+  return match&&(filter==="all"||(filter==="missing"&&!m.barcode)||(filter==="has"&&m.barcode));
+ });
+ $("barcodeRows").innerHTML=rows.length?rows.map(m=>'<tr><td><b>'+safe(m.medicine_name)+'</b></td><td>'+safe([m.brand,m.strength].filter(Boolean).join(" · ")||"—")+'</td><td>'+safe(m.barcode||"Not assigned")+'</td><td><div class="row-actions"><button class="btn muted" data-bview="'+safe(m.id)+'" type="button">View / Print</button><button class="btn muted" data-bassign="'+safe(m.id)+'" type="button">'+(m.barcode?"Regenerate":"Generate")+'</button></div></td></tr>').join(""):'<tr><td colspan="4">কোনো Medicine পাওয়া যায়নি।</td></tr>';
+ $("barcodeRows").querySelectorAll("[data-bview]").forEach(b=>b.onclick=()=>showBarcode(barcodeMedicines.find(m=>m.id===b.dataset.bview)));
+ $("barcodeRows").querySelectorAll("[data-bassign]").forEach(b=>b.onclick=()=>assignBarcode(b.dataset.bassign));
+}
+function renderBarcodeLabel(m){
+ if(!m)return;
+ if(!m.barcode){say($("barcodeStatus"),"এই Medicine-এর barcode নেই। Generate চাপুন।",true);return;}
+ if(!window.JsBarcode){say($("barcodeStatus"),"Barcode library load হয়নি। Internet connection পরীক্ষা করুন।",true);return;}
+ $("barcodeLabelName").textContent=m.medicine_name;
+ $("barcodeLabelMeta").textContent=[m.brand,m.strength,m.is_active?"Active":"Inactive"].filter(Boolean).join(" · ");
+ $("barcodeLabelCode").textContent=m.barcode;
+ try{window.JsBarcode("#barcodeSvg",m.barcode,{format:"CODE128",lineColor:"#111",width:2,height:62,displayValue:false,margin:8});}
+ catch(err){say($("barcodeStatus"),"এই code দিয়ে barcode তৈরি করা যায়নি: "+err.message,true);return;}
+ $("barcodeLabelPanel").hidden=false;$("barcodeLabelPanel").scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+function showBarcode(m){if(!m)return;renderBarcodeLabel(m);}
+async function assignBarcode(id){
+ const m=barcodeMedicines.find(x=>x.id===id);if(!m)return;
+ if(m.barcode&&!confirm("বর্তমান barcode বদলে নতুন barcode তৈরি করবেন?"))return;
+ const code="BMP"+crypto.randomUUID().replace(/-/g,"").slice(0,16).toUpperCase();
+ say($("barcodeStatus"),"নতুন barcode সংরক্ষণ হচ্ছে...");
+ const {error}=await db.from("erp_medicines").update({barcode:code}).eq("id",id);
+ if(error){say($("barcodeStatus"),"Barcode সংরক্ষণ হয়নি: "+error.message,true);return;}
+ m.barcode=code;renderBarcodeRows();renderBarcodeLabel(m);say($("barcodeStatus"),"Barcode তৈরি ও সংরক্ষণ হয়েছে।");
+}
+async function findScannedBarcode(){
+ const code=value("barcodeScanInput");if(!code){say($("barcodeStatus"),"আগে Barcode scan বা লিখুন।",true);return;}
+ const match=barcodeMedicines.find(m=>String(m.barcode||"").trim().toLowerCase()===code.toLowerCase());
+ if(match){showBarcode(match);say($("barcodeStatus"),"Medicine পাওয়া গেছে: "+match.medicine_name);return;}
+ const {data,error}=await db.from("erp_medicines").select("id,medicine_name,brand,strength,barcode,is_active").eq("barcode",code).maybeSingle();
+ if(error){say($("barcodeStatus"),"খোঁজা যায়নি: "+error.message,true);return;}
+ if(!data){$("barcodeLabelPanel").hidden=true;say($("barcodeStatus"),"এই Barcode-এর কোনো Medicine পাওয়া যায়নি।",true);return;}
+ showBarcode(data);say($("barcodeStatus"),"Medicine পাওয়া গেছে: "+data.medicine_name);
+}
+$("barcodeScanBtn").onclick=findScannedBarcode;
+$("barcodeScanInput").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();findScannedBarcode();}});
+$("barcodeSearch").oninput=renderBarcodeRows;$("barcodeFilter").onchange=renderBarcodeRows;
+$("printBarcodeBtn").onclick=()=>{if(!$("barcodeLabelPanel").hidden)window.print();};
+$("barcodeTab").onclick=()=>{
+ $("medicineModule").hidden=true;$("batchModule").hidden=true;$("barcodeModule").hidden=false;
+ $("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;
+ ["customersTab","medicinesTab","batchesTab"].forEach(id=>$(id).classList.remove("active"));
+ $("barcodeTab").classList.add("active");loadBarcodeMedicines();
 };
 
 if(!window.supabase||!window.BMP_SUPABASE_URL||!window.BMP_SUPABASE_ANON_KEY||window.BMP_SUPABASE_ANON_KEY.startsWith("PASTE_")){say($("loginStatus"),"Supabase config পাওয়া যায়নি।",true);return;}
