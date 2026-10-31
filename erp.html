@@ -107,6 +107,7 @@
 <div class="full form-actions"><button id="completePurchaseBtn" class="btn" type="button">Save Purchase &amp; Add Stock</button><button id="clearPurchaseBtn" class="btn muted" type="button">Clear</button></div></div><p id="purchaseStatus" class="status"></p></div>
 <div class="panel inner-panel"><h3>Supplier Due Payment / Collection</h3><p>Purchase invoice-এর বকেয়া থেকে আংশিক বা সম্পূর্ণ টাকা পরিশোধ করুন।</p>
 <div class="form-grid"><label class="full">Purchase Invoice<select id="supplierDuePurchase"><option value="">বকেয়া Purchase নির্বাচন করুন</option></select></label>
+<label>Pay From Account *<select id="supplierPaymentAccount" required><option value="">প্রথমে Accounts-এ Account তৈরি করুন</option></select></label>
 <label>Payment Amount (৳)<input id="supplierPaymentAmount" type="number" min="0.01" step="0.01" value="0"></label>
 <label>Payment Method<select id="supplierPaymentMethod"><option value="cash">Cash</option><option value="bank">Bank</option><option value="mobile_banking">Mobile Banking</option><option value="card">Card</option><option value="other">Other</option></select></label>
 <label>Reference Number<input id="supplierPaymentReference" maxlength="120"></label><label>Note<input id="supplierPaymentNote" maxlength="300"></label>
@@ -144,6 +145,7 @@
 <div class="stock-summary"><div class="stock-card"><small>Due Invoices</small><strong id="customerDueInvoiceCount">0</strong></div><div class="stock-card"><small>Total Due (৳)</small><strong id="customerDueTotal">0.00</strong></div></div>
 <div class="panel inner-panel"><h3>Collect Customer Due</h3><div class="form-grid">
 <label class="full">Due Invoice<select id="customerDueInvoice"><option value="">বকেয়া Invoice নির্বাচন করুন</option></select></label>
+<label>Deposit Account *<select id="customerPaymentAccount" required><option value="">প্রথমে Accounts-এ Account তৈরি করুন</option></select></label>
 <label>Payment Amount (৳)<input id="customerPaymentAmount" type="number" min="0.01" step="0.01" value="0"></label>
 <label>Payment Method<select id="customerPaymentMethod"><option value="cash">Cash</option><option value="bank">Bank</option><option value="mobile_banking">Mobile Banking</option><option value="card">Card</option><option value="other">Other</option></select></label>
 <label>Reference Number<input id="customerPaymentReference" maxlength="120"></label><label>Note<input id="customerPaymentNote" maxlength="300"></label>
