@@ -376,6 +376,52 @@ $("customerDueTab").onclick=async()=>{
 };
 
 
+
+let purchaseReturnOptions=[];
+async function loadPurchaseReturns(){
+ const [items,returned,history]=await Promise.all([
+  db.from("erp_purchase_invoice_items").select("id,purchase_id,medicine_id,batch_id,medicine_name,batch_number,quantity,purchase_price,erp_purchase_invoices(purchase_number,supplier_id,erp_suppliers(supplier_name)),erp_medicine_batches(quantity_available)").order("created_at",{ascending:false}).limit(500),
+  db.from("erp_purchase_return_items").select("purchase_item_id,quantity"),
+  db.from("erp_purchase_returns").select("return_number,created_at,return_total,reason,erp_purchase_invoices(purchase_number,erp_suppliers(supplier_name))").order("created_at",{ascending:false}).limit(50)
+ ]);
+ if(items.error){say($("purchaseReturnStatus"),"Purchase item load হয়নি: "+items.error.message,true);return;}
+ if(returned.error){say($("purchaseReturnStatus"),"Return history যাচাই হয়নি: "+returned.error.message,true);return;}
+ const used={};(returned.data||[]).forEach(x=>used[x.purchase_item_id]=(used[x.purchase_item_id]||0)+Number(x.quantity));
+ purchaseReturnOptions=(items.data||[]).map(x=>({...x,remaining:Number(x.quantity)-(used[x.id]||0),available:Number(x.erp_medicine_batches?.quantity_available||0)})).filter(x=>x.remaining>0&&x.available>0);
+ $("purchaseReturnItem").innerHTML='<option value="">Purchase item নির্বাচন করুন</option>'+purchaseReturnOptions.map(x=>'<option value="'+x.id+'">'+safe(x.erp_purchase_invoices?.purchase_number||"")+' · '+safe(x.medicine_name)+' · Batch '+safe(x.batch_number)+' · Qty '+x.remaining+' · Available '+x.available+'</option>').join("");
+ $("purchaseReturnRows").innerHTML=history.error?'<tr><td colspan="6">History load হয়নি।</td></tr>':(history.data||[]).map(x=>'<tr><td>'+safe(x.return_number)+'</td><td>'+new Date(x.created_at).toLocaleString("en-BD")+'</td><td>'+safe(x.erp_purchase_invoices?.purchase_number||"")+'</td><td>'+safe(x.erp_purchase_invoices?.erp_suppliers?.supplier_name||"")+'</td><td>৳ '+purMoney(x.return_total)+'</td><td>'+safe(x.reason)+'</td></tr>').join("")||'<tr><td colspan="6">এখনো Purchase Return নেই।</td></tr>';
+ updatePurchaseReturnPreview();
+}
+function updatePurchaseReturnPreview(){
+ const item=purchaseReturnOptions.find(x=>x.id===value("purchaseReturnItem"));
+ const qty=Math.max(0,Math.floor(Number(value("purchaseReturnQty"))||0));
+ $("purchaseReturnMax").textContent=item?Math.min(item.remaining,item.available):0;
+ $("purchaseReturnQty").max=item?Math.min(item.remaining,item.available):1;
+ $("purchaseReturnValue").textContent=purMoney(item?qty*Number(item.purchase_price):0);
+}
+$("purchaseReturnItem").onchange=updatePurchaseReturnPreview;
+$("purchaseReturnQty").oninput=updatePurchaseReturnPreview;
+$("submitPurchaseReturnBtn").onclick=async()=>{
+ const item=purchaseReturnOptions.find(x=>x.id===value("purchaseReturnItem"));
+ const qty=Math.floor(Number(value("purchaseReturnQty"))||0),reason=value("purchaseReturnReason").trim();
+ if(!activeUser||activeUser.id!==ADMIN_UID||!item||qty<1||qty>item.remaining||qty>item.available||!reason){say($("purchaseReturnStatus"),"Purchase item, Available Quantity ও Return Reason সঠিকভাবে দিন।",true);return;}
+ if(!confirm("Supplier-কে Purchase Return করবেন? Qty: "+qty+" · Value ৳ "+purMoney(qty*Number(item.purchase_price))+" · Stock কমবে এবং বকেয়া সমন্বয় হবে।"))return;
+ $("submitPurchaseReturnBtn").disabled=true;
+ const {data,error}=await db.rpc("bmp_create_purchase_return",{p_purchase_item_id:item.id,p_quantity:qty,p_reason:reason});
+ $("submitPurchaseReturnBtn").disabled=false;
+ if(error){say($("purchaseReturnStatus"),"Return হয়নি: "+error.message,true);return;}
+ say($("purchaseReturnStatus"),"Purchase Return সফল: "+data.return_number+" · ৳ "+purMoney(data.return_total)+" · নতুন Due ৳ "+purMoney(data.purchase_due));
+ $("purchaseReturnQty").value="1";$("purchaseReturnReason").value="";
+ await loadPurchaseReturns();
+};
+$("refreshPurchaseReturnBtn").onclick=loadPurchaseReturns;
+$("purchaseReturnTab").onclick=async()=>{
+ ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule"].forEach(id=>$(id).hidden=true);
+ $("purchaseReturnModule").hidden=false;$("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;
+ ["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","customerDueTab","salesReturnTab"].forEach(id=>$(id).classList.remove("active"));
+ $("purchaseReturnTab").classList.add("active");await loadPurchaseReturns();
+};
+
 let salesReturnOptions=[];
 async function loadSalesReturns(){
  const [items,returned,history]=await Promise.all([
