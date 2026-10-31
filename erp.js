@@ -927,7 +927,11 @@ $("financialReportMonth").value=new Date().toISOString().slice(0,7);
 
 
 async function loadStockReports(){
- const status=$("stockReportStatus"),body=$("stockReportRows");say(status,"Stock Report তৈরি হচ্ছে...");body.innerHTML='<tr><td colspan="10">তথ্য লোড হচ্ছে...</td></tr>';
+ await loadInventoryBranches();
+ const branch=value("stockReportBranch");
+ const status=$("stockReportStatus"),body=$("stockReportRows");
+ if(!branch){say(status,"Stock Report-এর জন্য Branch নির্বাচন করুন।");body.innerHTML='<tr><td colspan="10">প্রথমে Branch নির্বাচন করুন।</td></tr>';return;}
+ say(status,"Stock Report তৈরি হচ্ছে...");body.innerHTML='<tr><td colspan="10">তথ্য লোড হচ্ছে...</td></tr>';
  const [med,batch]=await Promise.all([
   db.from("erp_medicines").select("id,medicine_name,generic_name,barcode,is_active").eq("is_active",true).order("medicine_name").limit(10000),
   db.from("erp_medicine_batches").select("id,medicine_id,batch_number,expiry_date,quantity_available,purchase_price,mrp,is_active,erp_medicines(medicine_name,barcode)").eq("branch_id",branch).eq("is_active",true).order("expiry_date").limit(20000)
