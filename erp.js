@@ -270,7 +270,7 @@ let purchaseCart=[],purchaseMedicines=[];
 const purMoney=n=>Number(n||0).toFixed(2);
 function renderPurchaseCart(){const body=$("purchaseCartRows");body.innerHTML=purchaseCart.length?purchaseCart.map((x,i)=>'<tr><td>'+safe(x.name)+'</td><td>'+safe(x.batch)+'</td><td>'+x.qty+'</td><td>৳ '+purMoney(x.price)+'</td><td>৳ '+purMoney(x.mrp)+'</td><td>৳ '+purMoney(x.qty*x.price)+'</td><td><button class="btn muted" data-premove="'+i+'" type="button">Remove</button></td></tr>').join(""):'<tr><td colspan="7">Purchase cart খালি।</td></tr>';body.querySelectorAll("[data-premove]").forEach(b=>b.onclick=()=>{purchaseCart.splice(+b.dataset.premove,1);renderPurchaseCart();});const sub=purchaseCart.reduce((s,x)=>s+x.qty*x.price,0),disc=Number(value("purchaseDiscount")||0),total=Math.max(0,sub-disc);$("purchaseSubtotal").textContent=purMoney(sub);$("purchaseTotal").textContent=purMoney(total);if(!$("purchasePaid").dataset.touched)$("purchasePaid").value=purMoney(total);}
 async function loadPurchaseLists(){const [s,m]=await Promise.all([db.from("erp_suppliers").select("id,supplier_code,supplier_name").eq("is_active",true).order("supplier_name"),db.from("erp_medicines").select("id,medicine_name,strength").eq("is_active",true).order("medicine_name")]);if(s.error){say($("supplierStatus"),s.error.message,true);return;} $("purchaseSupplier").innerHTML='<option value="">Supplier নির্বাচন করুন</option>'+(s.data||[]).map(x=>'<option value="'+x.id+'">'+safe(x.supplier_code)+' · '+safe(x.supplier_name)+'</option>').join("");if(m.error){say($("purchaseItemStatus"),m.error.message,true);return;}purchaseMedicines=m.data||[];$("purchaseMedicine").innerHTML='<option value="">Medicine নির্বাচন করুন</option>'+purchaseMedicines.map(x=>'<option value="'+x.id+'">'+safe(x.medicine_name)+' · '+safe(x.strength||"")+'</option>').join("");await loadPurchaseRows();}
-$("saveSupplierBtn").onclick=async()=>{const name=value("supplierName").trim();if(!name){say($("supplierStatus"),"Supplier Name দিন।",true);return;}const {error}=await db.from("erp_suppliers").insert({supplier_name:name,mobile:value("supplierMobile")||null,email:value("supplierEmail")||null,contact_person:value("supplierContact")||null,address:value("supplierAddress")||null,created_by:activeUser.id});if(error){say($("supplierStatus"),"Supplier save হয়নি: "+error.message,true);return;}["supplierName","supplierMobile","supplierEmail","supplierContact","supplierAddress"].forEach(id=>$(id).value="");say($("supplierStatus"),"Supplier সংরক্ষণ হয়েছে।");await loadPurchaseLists();};
+$("saveSupplierBtn").onclick=async()=>{const name=value("supplierName").trim();if(!name){say($("supplierStatus"),"Supplier Name দিন।",true);return;}const {error}=await db.from("erp_suppliers").insert({supplier_name:name,mobile:value("supplierMobile")||null,email:value("supplierEmail")||null,contact_person:value("supplierContact")||null,address:value("supplierAddress")||null,created_by:activeUser.id});if(error){say($("supplierStatus"),"Supplier save হয়নি: "+error.message,true);return;}["supplierName","supplierMobile","supplierEmail","supplierContact","supplierAddress"].forEach(id=>$(id).value="");say($("supplierStatus"),"Supplier সংরক্ষণ হয়েছে।");await loadPurchaseLists();await loadPaymentAccountOptions();};
 $("addPurchaseItemBtn").onclick=()=>{const med=purchaseMedicines.find(x=>x.id===value("purchaseMedicine")),batch=value("purchaseBatchNumber").trim(),qty=Number(value("purchaseQuantity")),price=Number(value("purchaseItemCost")),mrp=Number(value("purchaseMrp")),expiry=value("purchaseExpiry"),mfg=value("purchaseMfg");if(!med||!batch||!Number.isInteger(qty)||qty<1||!expiry||!Number.isFinite(price)||price<0||!Number.isFinite(mrp)||mrp<0||(mfg&&expiry<=mfg)){say($("purchaseItemStatus"),"Medicine, Batch, Quantity, Price ও Expiry সঠিকভাবে দিন।",true);return;}purchaseCart.push({medicine_id:med.id,name:med.medicine_name,batch,qty,price,mrp,expiry,manufacturing_date:mfg||null,received_date:value("purchaseReceived")||null});renderPurchaseCart();};
 $("purchaseDiscount").oninput=renderPurchaseCart;$("purchasePaid").oninput=()=>{$("purchasePaid").dataset.touched="1";};
 $("clearPurchaseBtn").onclick=()=>{purchaseCart=[];$("purchaseDiscount").value=0;$("purchasePaid").value=0;$("purchasePaid").dataset.touched="";renderPurchaseCart();};
@@ -295,7 +295,7 @@ $("recordSupplierPaymentBtn").onclick=async()=>{
  if(!activeUser||activeUser.id!==ADMIN_UID||!purchase||!Number.isFinite(amount)||amount<=0||amount>due){say($("supplierPaymentStatus"),"বকেয়া Purchase নির্বাচন করুন এবং Due-এর বেশি নয় এমন Payment Amount দিন।",true);return;}
  if(!confirm("৳ "+purMoney(amount)+" Supplier Payment সংরক্ষণ করবেন?"))return;
  $("recordSupplierPaymentBtn").disabled=true;say($("supplierPaymentStatus"),"Payment সংরক্ষণ হচ্ছে...");
- const {data,error}=await db.rpc("bmp_record_supplier_payment",{p_purchase_id:purchase,p_amount:amount,p_payment_method:value("supplierPaymentMethod"),p_reference:value("supplierPaymentReference"),p_note:value("supplierPaymentNote")});
+ const {data,error}=await db.rpc("bmp_record_supplier_payment",{p_purchase_id:purchase,p_amount:amount,p_payment_method:value("supplierPaymentMethod"),p_reference:value("supplierPaymentReference"),p_note:value("supplierPaymentNote"),p_account_id:value("supplierPaymentAccount") });
  $("recordSupplierPaymentBtn").disabled=false;
  if(error){say($("supplierPaymentStatus"),"Payment সংরক্ষণ হয়নি: "+error.message,true);return;}
  $("supplierPaymentAmount").value="0";$("supplierPaymentReference").value="";$("supplierPaymentNote").value="";
@@ -341,6 +341,12 @@ $("stockSearch").oninput=renderStockRows;$("stockFilter").onchange=renderStockRo
 $("stockTab").onclick=async()=>{["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","employeeModule"].forEach(id=>$(id).hidden=true);$("stockModule").hidden=false;$("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab"].forEach(id=>$(id).classList.remove("active"));$("stockTab").classList.add("active");await loadStock();};
 
 
+async function loadPaymentAccountOptions(){
+ const {data,error}=await db.from("erp_accounts").select("id,account_name,account_type").eq("is_active",true).order("account_name");
+ if(error){say($("customerPaymentStatus"),"Account list load হয়নি: "+error.message,true);say($("supplierPaymentStatus"),"Account list load হয়নি: "+error.message,true);return;}
+ const options='<option value="">Account নির্বাচন করুন</option>'+(data||[]).map(a=>'<option value="'+safe(a.id)+'">'+safe(a.account_name)+' · '+safe(a.account_type)+'</option>').join("");
+ ["customerPaymentAccount","supplierPaymentAccount"].forEach(id=>{const el=$(id);if(el){const old=el.value;el.innerHTML=options;el.value=old;}});
+}
 async function loadCustomerDue(){
  const [inv,pay]=await Promise.all([
   db.from("erp_sales_invoices").select("id,invoice_number,sale_date,total,paid,due,customers(customer_name,mobile_number)").gt("due",0).not("customer_id","is",null).order("sale_date",{ascending:false}).limit(500),
@@ -362,12 +368,12 @@ $("recordCustomerPaymentBtn").onclick=async()=>{
  if(!activeUser||activeUser.id!==ADMIN_UID||!invoice||!Number.isFinite(amount)||amount<=0||amount>due){say($("customerPaymentStatus"),"বকেয়া Invoice নির্বাচন করুন এবং Due-এর বেশি নয় এমন Amount দিন।",true);return;}
  if(!confirm("৳ "+purMoney(amount)+" Customer Due Payment সংরক্ষণ করবেন?"))return;
  $("recordCustomerPaymentBtn").disabled=true;say($("customerPaymentStatus"),"Payment সংরক্ষণ হচ্ছে...");
- const {data,error}=await db.rpc("bmp_record_customer_payment",{p_invoice_id:invoice,p_amount:amount,p_payment_method:value("customerPaymentMethod"),p_reference:value("customerPaymentReference"),p_note:value("customerPaymentNote")});
+ const {data,error}=await db.rpc("bmp_record_customer_payment",{p_invoice_id:invoice,p_amount:amount,p_payment_method:value("customerPaymentMethod"),p_reference:value("customerPaymentReference"),p_note:value("customerPaymentNote"),p_account_id:value("customerPaymentAccount") });
  $("recordCustomerPaymentBtn").disabled=false;
  if(error){say($("customerPaymentStatus"),"Payment সংরক্ষণ হয়নি: "+error.message,true);return;}
  $("customerPaymentAmount").value="0";$("customerPaymentReference").value="";$("customerPaymentNote").value="";
  say($("customerPaymentStatus"),"Payment সফল: "+data.invoice_number+" · বাকি Due ৳ "+purMoney(data.due));
- await loadCustomerDue();
+ await loadCustomerDue();await loadPaymentAccountOptions();
 };
 $("refreshCustomerDueBtn").onclick=loadCustomerDue;
 $("customerDueTab").onclick=async()=>{
