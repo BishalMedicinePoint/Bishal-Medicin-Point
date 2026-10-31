@@ -1101,16 +1101,38 @@ document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="dashboardTab")t.addEven
   if(error){$("activityLogRows").innerHTML='<tr><td colspan="2">'+esc(error.message)+'</td></tr>';return;}
   $("activityLogRows").innerHTML=data.length?data.map(x=>'<tr><td>'+esc(new Date(x.changed_at).toLocaleString())+'</td><td>'+esc(x.operation+" "+x.table_name+" "+(x.record_id||""))+'</td></tr>').join(""):'<tr><td colspan="2">No database activity yet.</td></tr>';
  }
+ async function renderPhotoGallery(){
+  if(!ready){$("photoManagerStatus").textContent="Admin Supabase session নেই; private gallery দেখা যাবে না।";return;}
+  $("photoManagerPreview").innerHTML="<p>ছবি লোড হচ্ছে...</p>";
+  const {data,error}=await client.storage.from("erp-photos").list("uploads",{limit:100,sortBy:{column:"created_at",order:"desc"}});
+  if(error){$("photoManagerPreview").textContent="Gallery load হয়নি: "+error.message;return;}
+  const files=(data||[]).filter(x=>x.id&&/\.(png|jpe?g|webp)$/i.test(x.name));
+  if(!files.length){$("photoManagerPreview").textContent="এখনো কোনো ছবি Upload করা হয়নি।";return;}
+  $("photoManagerPreview").innerHTML="";
+  for(const file of files){
+   const path="uploads/"+file.name;
+   const {data:link,error:signError}=await client.storage.from("erp-photos").createSignedUrl(path,3600);
+   if(signError||!link?.signedUrl)continue;
+   const card=document.createElement("figure");card.className="photo-gallery-card";
+   const img=document.createElement("img");img.alt=file.name;img.loading="lazy";img.src=link.signedUrl;
+   const caption=document.createElement("figcaption");caption.textContent=file.name;
+   card.append(img,caption);$("photoManagerPreview").appendChild(card);
+  }
+  $("photoManagerStatus").textContent=files.length+"টি private ছবি Gallery-তে দেখানো হচ্ছে। Signed link ১ ঘণ্টা কার্যকর থাকবে।";
+ }
+ $("refreshPhotoGallery").onclick=renderPhotoGallery;
  $("photoManagerInput").addEventListener("change",async e=>{
   if(!ready){$("photoManagerStatus").textContent="Admin Supabase session নেই; cloud upload করা যায়নি।";return;}
-  const files=[...(e.target.files||[])];let ok=0;
+  const files=[...(e.target.files||[])];let ok=0,failed=0;
   for(const file of files){
-   if(!/^image\/(png|jpeg|webp)$/.test(file.type)||file.size>5*1024*1024)continue;
+   if(!/^image\/(png|jpeg|webp)$/.test(file.type)||file.size>5*1024*1024){failed++;continue;}
    const path="uploads/"+Date.now()+"-"+crypto.randomUUID()+"-"+file.name.replace(/[^a-zA-Z0-9._-]/g,"_");
    const {error}=await client.storage.from("erp-photos").upload(path,file,{contentType:file.type,upsert:false});
-   if(!error){ok++;const img=document.createElement("img");img.alt=file.name;img.src=URL.createObjectURL(file);img.style.maxWidth="130px";img.style.maxHeight="130px";$("photoManagerPreview").appendChild(img);}
+   if(error)failed++;else ok++;
   }
-  $("photoManagerStatus").textContent=ok+"টি ছবি private Supabase storage-এ upload হয়েছে।";
+  $("photoManagerInput").value="";
+  await renderPhotoGallery();
+  $("photoManagerStatus").textContent=ok+"টি ছবি upload হয়েছে; "+failed+"টি বাদ/ব্যর্থ। "+$("photoManagerStatus").textContent;
  });
  $("downloadLocalBackup").addEventListener("click",async()=>{
   if(!ready){$("backupStatus").textContent="Admin Supabase session ছাড়া database backup নেওয়া যাবে না।";return;}
@@ -1167,6 +1189,6 @@ document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="dashboardTab")t.addEven
  $id("downloadLocalBackup").onclick=()=>{const keys=["invoiceSettings","shopSettings","branches","websiteSettings","orders","activity"],data={product:"Bishal Medicine Point ERP local settings backup",createdAt:new Date().toISOString(),data:{}};keys.forEach(k=>data.data[k]=read(k,null));const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="bmp-local-settings-backup.json";a.click();URL.revokeObjectURL(url);$id("backupStatus").textContent="Local settings backup download শুরু হয়েছে; Supabase database অন্তর্ভুক্ত নয়।";};
  $id("restoreLocalBackup").onchange=async e=>{const file=e.target.files?.[0];if(!file)return;try{const data=JSON.parse(await file.text());if(!data.data||typeof data.data!=="object")throw new Error("Invalid backup");Object.entries(data.data).forEach(([k,v])=>{if(["invoiceSettings","shopSettings","branches","websiteSettings","orders","activity"].includes(k))write(k,v);});loadFields("invoiceSettings",invoiceFields);loadFields("shopSettings",shopFields);loadFields("websiteSettings",websiteFields);renderBranches();renderOrders();renderLog();$id("backupStatus").textContent="Local settings restore হয়েছে। Database restore হয়নি।";log("Local settings restored");}catch(err){$id("backupStatus").textContent="Restore failed: "+err.message;}e.target.value="";};
  $id("clearLocalActivity").onclick=()=>{write("activity",[]);renderLog();};
- $id("photoManagerInput").onchange=e=>{const files=[...(e.target.files||[])];$id("photoManagerPreview").innerHTML="";files.forEach(file=>{if(!/^image\/(png|jpeg|webp)$/.test(file.type))return;const img=document.createElement("img");img.alt=file.name;img.src=URL.createObjectURL(file);img.style.maxWidth="130px";img.style.maxHeight="130px";img.style.objectFit="cover";$id("photoManagerPreview").appendChild(img);});$id("photoManagerStatus").textContent=files.length+"টি ফাইল preview করা হয়েছে; স্থায়ী upload হয়নি।";};
+ // Photo uploads and private gallery are handled by the Supabase-backed module above.
  renderBranches();renderOrders();renderLog();
 })();
