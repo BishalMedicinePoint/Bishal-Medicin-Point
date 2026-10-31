@@ -653,4 +653,63 @@ $("permissionsTab").onclick=async()=>{
 
 ["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","customerDueTab","salesReturnTab","purchaseReturnTab","employeesTab","attendanceTab"].forEach(id=>{const tab=$(id);if(tab)tab.addEventListener("click",()=>{$("permissionsModule").hidden=true;});});
 
+
+let payrollCache=[];
+const payrollMoney=n=>"৳ "+money(n);
+function payrollNet(){
+ const total=["payrollBasic","payrollAllowances","payrollBonus"].reduce((s,id)=>s+Number(value(id)||0),0)-Number(value("payrollDeductions")||0);
+ $("payrollNetPreview").textContent=payrollMoney(Math.max(0,total));
+}
+async function loadPayrollEmployees(){
+ const {data,error}=await db.from("erp_employees").select("id,employee_code,full_name").order("full_name");
+ if(error){say($("payrollStatus"),"Employee load হয়নি: "+error.message,true);return;}
+ $("payrollEmployee").innerHTML='<option value="">Employee নির্বাচন করুন</option>'+(data||[]).map(e=>'<option value="'+e.id+'">'+safe(e.employee_code)+' · '+safe(e.full_name)+'</option>').join("");
+}
+async function loadPayroll(){
+ const month=value("payrollFilterMonth");
+ let q=db.from("erp_employee_payroll").select("*,erp_employees(employee_code,full_name)").order("payroll_month",{ascending:false}).limit(500);
+ if(month)q=q.eq("payroll_month",month+"-01");
+ const {data,error}=await q;
+ if(error){say($("payrollStatus"),"Payroll load হয়নি: "+error.message,true);return;}
+ payrollCache=data||[];renderPayroll();
+}
+function renderPayroll(){
+ const term=value("payrollSearch").toLowerCase();
+ const rows=payrollCache.filter(p=>(p.erp_employees?.full_name||"").toLowerCase().includes(term)||(p.erp_employees?.employee_code||"").toLowerCase().includes(term));
+ $("payrollRows").innerHTML=rows.length?rows.map(p=>'<tr><td>'+safe(String(p.payroll_month).slice(0,7))+'</td><td>'+safe(p.erp_employees?.employee_code||"")+'</td><td>'+safe(p.erp_employees?.full_name||"")+'</td><td>'+money(p.basic_salary)+'</td><td>'+money(p.allowances)+'</td><td>'+money(p.bonus)+'</td><td>'+money(p.deductions)+'</td><td>'+money(p.net_salary)+'</td><td>'+safe(p.payment_status)+'</td><td>'+safe(p.paid_date||"—")+'</td></tr>').join(""):'<tr><td colspan="10">কোনো Payroll পাওয়া যায়নি।</td></tr>';
+ const sum=key=>rows.reduce((s,p)=>s+Number(p[key]||0),0);
+ $("payrollTotalNet").textContent=payrollMoney(sum("net_salary"));
+ $("payrollPaidTotal").textContent=payrollMoney(rows.filter(p=>p.payment_status==="paid").reduce((s,p)=>s+Number(p.net_salary),0));
+ $("payrollPendingTotal").textContent=payrollMoney(rows.filter(p=>p.payment_status==="pending").reduce((s,p)=>s+Number(p.net_salary),0));
+}
+["payrollBasic","payrollAllowances","payrollBonus","payrollDeductions"].forEach(id=>$(id).addEventListener("input",payrollNet));
+$("payrollPaymentStatus").onchange=()=>{if(value("payrollPaymentStatus")==="paid"&&!value("payrollPaidDate"))$("payrollPaidDate").value=today();if(value("payrollPaymentStatus")==="pending")$("payrollPaidDate").value="";};
+$("payrollForm").onsubmit=async e=>{
+ e.preventDefault();
+ if(!activeUser||activeUser.id!==ADMIN_UID){say($("payrollStatus"),"শুধু Super Admin Payroll সংরক্ষণ করতে পারবেন।",true);return;}
+ const employee=value("payrollEmployee"),month=value("payrollMonth"),basic=Number(value("payrollBasic")),allow=Number(value("payrollAllowances")||0),bonus=Number(value("payrollBonus")||0),deduct=Number(value("payrollDeductions")||0),status=value("payrollPaymentStatus"),paidDate=value("payrollPaidDate")||null;
+ if(!employee||!month){say($("payrollStatus"),"Employee ও Payroll Month নির্বাচন করুন।",true);return;}
+ if([basic,allow,bonus,deduct].some(n=>!Number.isFinite(n)||n<0)||deduct>basic+allow+bonus){say($("payrollStatus"),"বেতনের অঙ্ক সঠিক দিন; Deduction মোট আয়ের বেশি হতে পারবে না।",true);return;}
+ if(status==="paid"&&!paidDate){say($("payrollStatus"),"Paid হলে Paid Date দিতে হবে।",true);return;}
+ if(status==="pending"&&paidDate){say($("payrollStatus"),"Pending Payroll-এর Paid Date খালি রাখুন।",true);return;}
+ const row={employee_id:employee,payroll_month:month+"-01",basic_salary:basic,allowances:allow,bonus,deductions:deduct,payment_status:status,paid_date:paidDate,payment_method:value("payrollPaymentMethod")||null,notes:value("payrollNotes")||null,created_by:activeUser.id};
+ $("savePayrollBtn").disabled=true;
+ const {error}=await db.from("erp_employee_payroll").upsert(row,{onConflict:"employee_id,payroll_month"});
+ $("savePayrollBtn").disabled=false;
+ if(error){say($("payrollStatus"),"Payroll সংরক্ষণ হয়নি: "+error.message,true);return;}
+ say($("payrollStatus"),"Payroll সংরক্ষণ হয়েছে। একই Employee ও Month থাকলে আগের রেকর্ড আপডেট হয়েছে।");
+ $("payrollForm").reset();$("payrollMonth").value=new Date().toISOString().slice(0,7);$("payrollPaymentStatus").value="pending";payrollNet();await loadPayroll();
+};
+$("resetPayrollBtn").onclick=()=>{$("payrollForm").reset();$("payrollMonth").value=new Date().toISOString().slice(0,7);$("payrollNetPreview").textContent="৳ 0.00";};
+$("refreshPayrollBtn").onclick=loadPayroll;$("payrollSearch").oninput=renderPayroll;$("payrollFilterMonth").onchange=loadPayroll;
+$("payrollTab").onclick=async()=>{
+ ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","employeeModule","attendanceModule"].forEach(id=>{const el=$(id);if(el)el.hidden=true;});
+ $("customerModulePanel").hidden=true;$("customerFormPanel").hidden=true;$("permissionsModule").hidden=true;$("payrollModule").hidden=false;
+ ["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","customerDueTab","salesReturnTab","purchaseReturnTab","employeesTab","attendanceTab","permissionsTab"].forEach(id=>$(id).classList.remove("active"));
+ $("payrollTab").classList.add("active");await loadPayrollEmployees();await loadPayroll();
+};
+["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","customerDueTab","salesReturnTab","purchaseReturnTab","employeesTab","attendanceTab","permissionsTab"].forEach(id=>{const tab=$(id);if(tab)tab.addEventListener("click",()=>{$("payrollModule").hidden=true;});});
+$("payrollMonth").value=new Date().toISOString().slice(0,7);
+$("payrollFilterMonth").value=new Date().toISOString().slice(0,7);
+
 })();
