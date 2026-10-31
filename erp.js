@@ -712,4 +712,63 @@ $("payrollTab").onclick=async()=>{
 $("payrollMonth").value=new Date().toISOString().slice(0,7);
 $("payrollFilterMonth").value=new Date().toISOString().slice(0,7);
 
+
+let accountCache=[],accountTransactionCache=[];
+function renderAccounts(){
+ const byId=new Map(accountCache.map(a=>[a.id,{name:a.account_name,type:a.account_type,opening:Number(a.opening_balance),income:0,expense:0}]));
+ accountTransactionCache.forEach(t=>{const a=byId.get(t.account_id);if(a)a[t.transaction_type]+=Number(t.amount);});
+ const vals=[...byId.values()],sum=k=>vals.reduce((s,a)=>s+a[k],0);
+ $("accountsOpeningTotal").textContent=payrollMoney(sum("opening"));
+ $("accountsIncomeTotal").textContent=payrollMoney(sum("income"));
+ $("accountsExpenseTotal").textContent=payrollMoney(sum("expense"));
+ $("accountsCurrentTotal").textContent=payrollMoney(sum("opening")+sum("income")-sum("expense"));
+ $("accountBalanceRows").innerHTML=vals.length?vals.map(a=>'<tr><td>'+safe(a.name)+'</td><td>'+safe(a.type)+'</td><td>'+money(a.opening)+'</td><td>'+money(a.income)+'</td><td>'+money(a.expense)+'</td><td>'+money(a.opening+a.income-a.expense)+'</td></tr>').join(""):'<tr><td colspan="6">কোনো Account নেই।</td></tr>';
+ const term=value("accountTransactionSearch").toLowerCase();
+ const rows=accountTransactionCache.filter(t=>[t.category,t.reference_number,t.description,t.erp_accounts?.account_name].some(v=>String(v||"").toLowerCase().includes(term)));
+ $("accountTransactionRows").innerHTML=rows.length?rows.map(t=>'<tr><td>'+safe(t.erp_accounts?.account_name||"")+'</td><td>'+safe(t.transaction_date)+'</td><td>'+safe(t.transaction_type)+'</td><td>'+safe(t.category)+'</td><td>'+money(t.amount)+'</td><td>'+safe(t.reference_number||"—")+'</td><td>'+safe(t.description||"")+'</td></tr>').join(""):'<tr><td colspan="7">কোনো Transaction পাওয়া যায়নি।</td></tr>';
+}
+async function loadAccounts(){
+ const [a,t]=await Promise.all([
+  db.from("erp_accounts").select("*").eq("is_active",true).order("account_name"),
+  (value("accountTransactionMonth")?db.from("erp_account_transactions").select("*,erp_accounts(account_name)").gte("transaction_date",value("accountTransactionMonth")+"-01").lt("transaction_date",new Date(new Date(value("accountTransactionMonth")+"-01").getFullYear(),new Date(value("accountTransactionMonth")+"-01").getMonth()+1,1).toISOString().slice(0,10)):db.from("erp_account_transactions").select("*,erp_accounts(account_name)")).order("transaction_date",{ascending:false}).limit(500)
+ ]);
+ if(a.error){say($("accountStatus"),"Account load হয়নি: "+a.error.message,true);return;}
+ if(t.error){say($("accountStatus"),"Transaction load হয়নি: "+t.error.message,true);return;}
+ accountCache=a.data||[];accountTransactionCache=t.data||[];
+ $("transactionAccount").innerHTML='<option value="">Account নির্বাচন করুন</option>'+accountCache.map(x=>'<option value="'+x.id+'">'+safe(x.account_name)+'</option>').join("");
+ renderAccounts();
+}
+$("accountForm").onsubmit=async e=>{
+ e.preventDefault();if(!activeUser||activeUser.id!==ADMIN_UID){say($("accountStatus"),"শুধু Super Admin Account তৈরি করতে পারবেন।",true);return;}
+ const name=value("accountName"),opening=Number(value("accountOpening"));
+ if(!name||!Number.isFinite(opening)||opening<0){say($("accountStatus"),"Account তথ্য সঠিকভাবে দিন।",true);return;}
+ $("saveAccountBtn").disabled=true;
+ const {error}=await db.from("erp_accounts").insert({account_name:name,account_type:value("accountType"),opening_balance:opening,notes:value("accountNotes")||null,created_by:activeUser.id});
+ $("saveAccountBtn").disabled=false;
+ if(error){say($("accountStatus"),"Account তৈরি হয়নি: "+error.message,true);return;}
+ $("accountForm").reset();$("accountOpening").value="0";say($("accountStatus"),"Account তৈরি হয়েছে।");await loadAccounts();
+};
+$("accountTransactionForm").onsubmit=async e=>{
+ e.preventDefault();if(!activeUser||activeUser.id!==ADMIN_UID){say($("accountStatus"),"শুধু Super Admin Transaction যোগ করতে পারবেন।",true);return;}
+ const amount=Number(value("transactionAmount"));
+ if(!value("transactionAccount")||!value("transactionDate")||!value("transactionCategory")||!Number.isFinite(amount)||amount<=0){say($("accountStatus"),"Transaction-এর সব তথ্য সঠিকভাবে দিন।",true);return;}
+ $("saveTransactionBtn").disabled=true;
+ const {error}=await db.from("erp_account_transactions").insert({account_id:value("transactionAccount"),transaction_date:value("transactionDate"),transaction_type:value("transactionType"),category:value("transactionCategory"),amount,reference_number:value("transactionReference")||null,description:value("transactionDescription")||null,created_by:activeUser.id});
+ $("saveTransactionBtn").disabled=false;
+ if(error){say($("accountStatus"),"Transaction সংরক্ষণ হয়নি: "+error.message,true);return;}
+ $("accountTransactionForm").reset();$("transactionDate").value=today();say($("accountStatus"),"Income / Expense Transaction সংরক্ষণ হয়েছে।");await loadAccounts();
+};
+$("refreshAccountsBtn").onclick=loadAccounts;
+$("accountTransactionSearch").oninput=renderAccounts;
+$("accountTransactionMonth").onchange=loadAccounts;
+$("accountsTab").onclick=async()=>{
+ ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","employeeModule","attendanceModule"].forEach(id=>{const el=$(id);if(el)el.hidden=true;});
+ $("customerModulePanel").hidden=true;$("customerFormPanel").hidden=true;$("permissionsModule").hidden=true;$("payrollModule").hidden=true;$("accountsModule").hidden=false;
+ ["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","customerDueTab","salesReturnTab","purchaseReturnTab","employeesTab","attendanceTab","permissionsTab","payrollTab"].forEach(id=>$(id).classList.remove("active"));
+ $("accountsTab").classList.add("active");$("transactionDate").value=today();$("accountTransactionMonth").value=new Date().toISOString().slice(0,7);await loadAccounts();
+};
+["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","customerDueTab","salesReturnTab","purchaseReturnTab","employeesTab","attendanceTab","permissionsTab","payrollTab"].forEach(id=>{const tab=$(id);if(tab)tab.addEventListener("click",()=>{$("accountsModule").hidden=true;});});
+$("transactionDate").value=today();
+$("accountTransactionMonth").value=new Date().toISOString().slice(0,7);
+
 })();
