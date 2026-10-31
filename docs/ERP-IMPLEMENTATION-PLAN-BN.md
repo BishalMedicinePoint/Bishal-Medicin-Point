@@ -133,3 +133,9 @@ Implement all 30 modules requested by the owner. Preserve the current public med
 - Calculate derived unit rates only when pack conversion quantity is known; display the calculation and allow authorized users to review/override with validation. Avoid rounding errors in inventory and billing.
 - Track stock in a consistent base unit and convert box/strip/unit sales accurately; do not assume all medicines are sold by tablet.
 - Store actual purchase price by batch, because different batches may have different costs. Preserve historical batch cost and sale records.
+
+## Medicine Add screen — pricing fields placement
+
+- Put the complete box/pack/strip/tablet pricing and conversion controls directly inside the Medicine Add form (and keep them editable in Medicine Edit), not only in Purchase or Batch screens.
+- Fields on Medicine Add: box price, strip price, per-tablet/per-unit price, purchase rate, sale price, MRP, units per strip, strips per box, and sale units allowed.
+- The Add form should preview calculated conversions (for example box → strip → tablet) and validate that quantities and prices are consistent. Batch-specific actual purchase cost and expiry remain recorded on the Batch/Purchase entry.
