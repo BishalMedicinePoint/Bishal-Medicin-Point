@@ -6,3 +6,17 @@
 
 .purchase-cart{margin-top:14px}.purchase-module .form-grid{gap:12px}.purchase-module .inner-panel{margin-top:14px}.purchase-module table{font-size:13px}@media(max-width:700px){#purchaseModule .form-grid{grid-template-columns:1fr}}
 \n.stock-summary{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin:18px 0}.stock-card{background:#f3f8f5;border:1px solid var(--line);border-radius:12px;padding:15px}.stock-card small,.stock-card strong{display:block}.stock-card strong{font-size:25px;color:var(--deep);margin-top:5px}@media(max-width:850px){.stock-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}\n
+/* Theme and readable zoom controls */
+.zoom-tools{display:flex;align-items:center;gap:5px}.zoom-tools span{font-size:12px;min-width:38px;text-align:center;color:var(--muted)}
+.top-actions .btn{padding:7px 10px;font-size:12px}
+body[data-theme="dark"]{--ink:#e5eee9;--muted:#a7b8af;--line:#34483f;--bg:#101915;background:var(--bg);color:var(--ink)}
+body[data-theme="dark"] .topbar,body[data-theme="dark"] .panel{background:#19251f;border-color:var(--line);color:var(--ink)}
+body[data-theme="dark"] .inner-panel{background:#202e27}
+body[data-theme="dark"] .form-grid input,body[data-theme="dark"] .form-grid select,body[data-theme="dark"] .form-grid textarea,body[data-theme="dark"] .toolbar input,body[data-theme="dark"] .toolbar select,body[data-theme="dark"] .barcode-tools input,body[data-theme="dark"] .pos-totals input{background:#111b16;color:var(--ink);border-color:#455b4e}
+body[data-theme="dark"] .tab,body[data-theme="dark"] .btn.muted{background:#293a31;color:#e5eee9;border-color:#405449}
+body[data-theme="dark"] .tab.active{background:var(--deep);color:#fff}
+body[data-theme="dark"] th,body[data-theme="dark"] .stock-card{background:#24342b;color:#dce9e1}
+body[data-theme="dark"] .barcode-label{background:#fff;color:#111}
+body[data-theme="dark"] .status{background:#233b2d;color:#d6f1df}
+body[data-theme="dark"] .status.error{background:#482727;color:#ffdede}
+@media(max-width:760px){.top-actions{gap:5px;flex-wrap:wrap;justify-content:flex-end}.zoom-tools{gap:3px}.zoom-tools .btn{padding:6px 7px}.top-actions #themeToggle{padding:6px 8px}}
