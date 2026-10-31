@@ -169,8 +169,8 @@ $("batchForm").onsubmit=async e=>{
  if(!medicineId||!batchNumber||!expiry||!value("batchReceived")){say($("batchStatusText"),"Medicine, Batch Number, Expiry ও Received Date আবশ্যক।",true);return;}
  if(mfg&&expiry<=mfg){say($("batchStatusText"),"Expiry Date অবশ্যই Manufacturing Date-এর পরে হতে হবে।",true);return;}
  if(!Number.isInteger(qty)||qty<0){say($("batchStatusText"),"Quantity শূন্য বা ধনাত্মক পূর্ণসংখ্যা হতে হবে।",true);return;}
- const id=value("batchRecordId");
- const payload={medicine_id:medicineId,batch_number:batchNumber,manufacturing_date:mfg||null,expiry_date:expiry,received_date:value("batchReceived"),purchase_price:Number(value("batchPurchasePrice")||0),mrp:Number(value("batchMrp")||0),supplier_name:value("batchSupplier")||null,notes:value("batchNotes")||null};
+ const id=value("batchRecordId");if(!value("batchFormBranch")){say($("batchStatusText"),"Branch নির্বাচন করুন।",true);return;}
+ const payload={branch_id:value("batchFormBranch"),medicine_id:medicineId,batch_number:batchNumber,manufacturing_date:mfg||null,expiry_date:expiry,received_date:value("batchReceived"),purchase_price:Number(value("batchPurchasePrice")||0),mrp:Number(value("batchMrp")||0),supplier_name:value("batchSupplier")||null,notes:value("batchNotes")||null};
  if(payload.purchase_price<0||payload.mrp<0){say($("batchStatusText"),"Price ঋণাত্মক হতে পারবে না।",true);return;}
  say($("batchStatusText"),"Batch সংরক্ষণ হচ্ছে...");
  let result;
