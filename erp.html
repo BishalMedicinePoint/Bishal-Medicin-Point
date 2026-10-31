@@ -6,7 +6,7 @@
 <link rel="stylesheet" href="erp.css">
 </head>
 <body>
-<header class="topbar"><a class="brand" href="index.html"><span class="plus">+</span><span><b>Bishal Medicine Point</b><small>Pharmacy ERP</small></span></a><div class="top-actions"><a href="admin.html">Medicine Admin</a><button id="logoutBtn" class="btn muted" hidden>Logout</button></div></header>
+<header class="topbar"><a class="brand" href="index.html"><span class="plus">+</span><span><b>Bishal Medicine Point</b><small>Pharmacy ERP</small></span></a><div class="top-actions"><button id="themeToggle" class="btn muted" type="button" aria-label="Toggle dark mode">🌙 Dark</button><div class="zoom-tools"><button id="zoomOut" class="btn muted" type="button" aria-label="Zoom out">A−</button><span id="zoomLevel">100%</span><button id="zoomIn" class="btn muted" type="button" aria-label="Zoom in">A+</button><button id="zoomReset" class="btn muted" type="button">Reset</button></div><a href="admin.html">Medicine Admin</a><button id="logoutBtn" class="btn muted" hidden>Logout</button></div></header>
 <main class="wrap">
 <section id="loginPanel" class="panel login-panel"><p class="eyebrow">SECURE WORKSPACE</p><h1>ERP Login</h1><p>অনুমোদিত Super Admin অ্যাকাউন্ট দিয়ে প্রবেশ করুন।</p><form id="loginForm" class="form-grid"><label class="full">Email<input id="email" type="email" autocomplete="username" required></label><label class="full">Password<input id="password" type="password" autocomplete="current-password" required></label><div class="full"><button class="btn" type="submit">Login</button></div></form><p id="loginStatus" class="status" role="status"></p></section>
 <section id="workspace" hidden>
