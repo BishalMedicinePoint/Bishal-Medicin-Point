@@ -1,0 +1,31 @@
+create sequence public.bmp_purchase_return_seq start 1;
+create table public.erp_purchase_returns(id uuid primary key default gen_random_uuid(),return_number text not null unique,purchase_id uuid not null references public.erp_purchase_invoices(id) on delete restrict,supplier_id uuid not null references public.erp_suppliers(id) on delete restrict,return_total numeric(12,2) not null check(return_total>0),reason text not null,created_by uuid not null references auth.users(id),created_at timestamptz not null default now());
+create table public.erp_purchase_return_items(id uuid primary key default gen_random_uuid(),return_id uuid not null references public.erp_purchase_returns(id) on delete restrict,purchase_item_id uuid not null references public.erp_purchase_invoice_items(id) on delete restrict,batch_id uuid not null references public.erp_medicine_batches(id) on delete restrict,medicine_id uuid not null references public.erp_medicines(id) on delete restrict,quantity integer not null check(quantity>0),purchase_price numeric(12,2) not null check(purchase_price>=0),line_total numeric(12,2) not null check(line_total>0),created_at timestamptz not null default now());
+alter table public.erp_purchase_returns enable row level security; alter table public.erp_purchase_return_items enable row level security;
+create policy bmp_admin_manage_purchase_returns on public.erp_purchase_returns for all to authenticated using(auth.uid()='7a3166f2-e4bb-42b8-a649-033dd2d02090'::uuid) with check(auth.uid()='7a3166f2-e4bb-42b8-a649-033dd2d02090'::uuid);
+create policy bmp_admin_manage_purchase_return_items on public.erp_purchase_return_items for all to authenticated using(auth.uid()='7a3166f2-e4bb-42b8-a649-033dd2d02090'::uuid) with check(auth.uid()='7a3166f2-e4bb-42b8-a649-033dd2d02090'::uuid);
+grant select,insert on public.erp_purchase_returns,public.erp_purchase_return_items to authenticated;
+create or replace function public.bmp_create_purchase_return(p_purchase_item_id uuid,p_quantity integer,p_reason text) returns jsonb language plpgsql security definer set search_path='' as $$
+declare v_item public.erp_purchase_invoice_items%rowtype; v_purchase public.erp_purchase_invoices%rowtype; v_batch public.erp_medicine_batches%rowtype; v_returned integer; v_total numeric(12,2); v_return_id uuid; v_no text; v_new_total numeric(12,2);
+begin
+if auth.uid() is distinct from '7a3166f2-e4bb-42b8-a649-033dd2d02090'::uuid then raise exception 'Not authorized'; end if;
+if p_quantity is null or p_quantity<=0 or nullif(btrim(p_reason),'') is null then raise exception 'Invalid return details'; end if;
+select * into v_item from public.erp_purchase_invoice_items where id=p_purchase_item_id for update; if not found then raise exception 'Purchase item not found'; end if;
+select * into v_purchase from public.erp_purchase_invoices where id=v_item.purchase_id for update;
+select coalesce(sum(quantity),0)::integer into v_returned from public.erp_purchase_return_items where purchase_item_id=v_item.id;
+if p_quantity>v_item.quantity-v_returned then raise exception 'Return quantity exceeds purchased quantity remaining'; end if;
+v_total:=round(v_item.purchase_price*p_quantity,2);
+if v_total>v_purchase.due then raise exception 'Return exceeds unpaid supplier due. Paid purchase returns need supplier credit/refund workflow.'; end if;
+select * into v_batch from public.erp_medicine_batches where id=v_item.batch_id for update;
+if not found or v_batch.quantity_available<p_quantity then raise exception 'Not enough available stock in this batch to return'; end if;
+update public.erp_medicine_batches set quantity_available=quantity_available-p_quantity,quantity_received=quantity_received-p_quantity,updated_at=now() where id=v_item.batch_id;
+v_new_total:=v_purchase.total-v_total;
+update public.erp_purchase_invoices set total=v_new_total,subtotal=greatest(subtotal-v_total,0),due=v_new_total-paid where id=v_purchase.id;
+v_no:='BMP-PR-'||to_char(current_date,'YYYY')||'-'||lpad(nextval('public.bmp_purchase_return_seq')::text,6,'0');
+insert into public.erp_purchase_returns(return_number,purchase_id,supplier_id,return_total,reason,created_by) values(v_no,v_purchase.id,v_purchase.supplier_id,v_total,btrim(p_reason),auth.uid()) returning id into v_return_id;
+insert into public.erp_purchase_return_items(return_id,purchase_item_id,batch_id,medicine_id,quantity,purchase_price,line_total) values(v_return_id,v_item.id,v_item.batch_id,v_item.medicine_id,p_quantity,v_item.purchase_price,v_total);
+insert into public.erp_stock_movements(batch_id,medicine_id,movement_type,quantity_change,reference_type,reference_id,note,created_by) values(v_item.batch_id,v_item.medicine_id,'adjustment',-p_quantity,'purchase_return',v_return_id,'Purchase return '||v_no,auth.uid());
+insert into public.erp_supplier_ledger(supplier_id,entry_type,amount,purchase_id,note,created_by) values(v_purchase.supplier_id,'adjustment',v_total,v_purchase.id,'Purchase return '||v_no,auth.uid());
+return jsonb_build_object('return_id',v_return_id,'return_number',v_no,'return_total',v_total,'purchase_due',v_new_total-v_purchase.paid);
+end; $$;
+revoke all on function public.bmp_create_purchase_return(uuid,integer,text) from public; grant execute on function public.bmp_create_purchase_return(uuid,integer,text) to authenticated;
