@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Employee Portal | Bishal Medicine Point</title>
+<link rel="stylesheet" href="erp.css">
+<style>
+.portal-wrap{max-width:900px;margin:34px auto;padding:0 16px 60px}
+.portal-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px;margin:18px 0;box-shadow:0 8px 24px rgba(20,60,40,.05)}
+.portal-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.portal-field{display:flex;flex-direction:column;gap:6px}
+.portal-field input{width:100%;padding:12px;border:1px solid var(--line);border-radius:9px;font:inherit}
+.portal-status{white-space:pre-wrap;color:var(--muted)}
+.portal-table{width:100%;border-collapse:collapse;min-width:560px}
+.portal-table th,.portal-table td{padding:10px;border-bottom:1px solid var(--line);text-align:left}
+.portal-table th{background:#f4f8f6}
+.portal-scroll{overflow:auto}
+.portal-profile{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.portal-profile div{padding:12px;background:#f5f9f7;border-radius:10px}
+.portal-profile small{display:block;color:var(--muted)}
+.portal-actions{display:flex;gap:10px;flex-wrap:wrap}
+@media(max-width:600px){.portal-grid,.portal-profile{grid-template-columns:1fr}.portal-card{padding:16px}}
+</style>
+</head>
+<body>
+<header class="topbar">
+ <a class="brand" href="index.html"><span class="plus">+</span><span><b>Bishal Medicine Point</b><small>Employee Portal</small></span></a>
+ <div class="top-actions"><a href="erp.html">ERP Login</a><a href="index.html">Website</a></div>
+</header>
+<main class="portal-wrap">
+ <section id="loginPanel" class="portal-card">
+  <p class="eyebrow">EMPLOYEE SELF SERVICE</p><h1>Employee Login</h1>
+  <p>আপনার অনুমোদিত Employee Login Account দিয়ে প্রবেশ করুন।</p>
+  <form id="loginForm" class="portal-grid">
+   <label class="portal-field">Email<input id="email" type="email" autocomplete="username" required></label>
+   <label class="portal-field">Password<input id="password" type="password" autocomplete="current-password" required></label>
+   <div><button class="btn" type="submit">Login</button></div>
+  </form>
+  <p id="loginStatus" class="portal-status" role="status"></p>
+ </section>
+ <section id="workspace" hidden>
+  <div class="portal-card">
+   <div class="portal-actions"><div style="flex:1"><p class="eyebrow">EMPLOYEE SELF SERVICE</p><h1 id="employeeName">Employee</h1><p id="employeeRole"></p></div><button id="logoutBtn" class="btn muted" type="button">Logout</button></div>
+   <div class="portal-profile">
+    <div><small>Employee Code</small><strong id="employeeCode">—</strong></div>
+    <div><small>Job Title</small><strong id="jobTitle">—</strong></div>
+    <div><small>System Role</small><strong id="systemRole">—</strong></div>
+    <div><small>Branch ID</small><strong id="branchId">—</strong></div>
+   </div>
+   <p id="portalStatus" class="portal-status" role="status"></p>
+  </div>
+  <section id="attendanceCard" class="portal-card" hidden>
+   <h2>আমার Attendance</h2>
+   <p>শুধু আপনার নিজের হাজিরার তথ্য দেখানো হবে।</p>
+   <div class="portal-scroll"><table class="portal-table"><thead><tr><th>Date</th><th>Status</th><th>Check In</th><th>Check Out</th><th>Notes</th></tr></thead><tbody id="attendanceRows"><tr><td colspan="5">তথ্য লোড হচ্ছে...</td></tr></tbody></table></div>
+  </section>
+  <section id="payrollCard" class="portal-card" hidden>
+   <h2>আমার Salary / Payroll</h2>
+   <p>শুধু আপনার নিজের Salary Record দেখানো হবে।</p>
+   <div class="portal-scroll"><table class="portal-table"><thead><tr><th>Month</th><th>Net Salary</th><th>Status</th><th>Paid Date</th></tr></thead><tbody id="payrollRows"><tr><td colspan="4">তথ্য লোড হচ্ছে...</td></tr></tbody></table></div>
+  </section>
+ </section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script src="employee-portal.js"></script>
+</body>
+</html>
