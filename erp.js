@@ -830,7 +830,7 @@ async function loadPayrollEmployees(){
 async function loadPayroll(){
  const month=value("payrollFilterMonth");
  await loadInventoryBranches();const branch=value("payrollBranch");if(!branch){say($("payrollStatus"),"Payroll-এর জন্য Branch নির্বাচন করুন।");return;}let q=db.from("erp_employee_payroll").select("*,erp_employees(employee_code,full_name)").eq("branch_id",branch).order("payroll_month",{ascending:false}).limit(500);
- if(month)q=q.eq("payroll_month",month+"-01");
+ if(month)q=q.eq("payroll_month",month+"-01");if(isManagerUser&&managerBranchId)q=q.eq("branch_id",managerBranchId);
  const {data,error}=await q;
  if(error){say($("payrollStatus"),"Payroll load হয়নি: "+error.message,true);return;}
  payrollCache=data||[];renderPayroll();
@@ -838,17 +838,17 @@ async function loadPayroll(){
 function renderPayroll(){
  const term=value("payrollSearch").toLowerCase();
  const rows=payrollCache.filter(p=>(p.erp_employees?.full_name||"").toLowerCase().includes(term)||(p.erp_employees?.employee_code||"").toLowerCase().includes(term));
- $("payrollRows").innerHTML=rows.length?rows.map(p=>'<tr><td>'+safe(String(p.payroll_month).slice(0,7))+'</td><td>'+safe(p.erp_employees?.employee_code||"")+'</td><td>'+safe(p.erp_employees?.full_name||"")+'</td><td>'+money(p.basic_salary)+'</td><td>'+money(p.allowances)+'</td><td>'+money(p.bonus)+'</td><td>'+money(p.deductions)+'</td><td>'+money(p.net_salary)+'</td><td>'+safe(p.payment_status)+'</td><td>'+safe(p.paid_date||"—")+'</td></tr>').join(""):'<tr><td colspan="10">কোনো Payroll পাওয়া যায়নি।</td></tr>';
+ $("payrollRows").innerHTML=rows.length?rows.map(p=>'<tr><td>'+safe(String(p.payroll_month).slice(0,7))+'</td><td>'+safe(p.erp_employees?.employee_code||"")+'</td><td>'+safe(p.erp_employees?.full_name||"")+'</td><td>'+money(p.basic_salary)+'</td><td>'+money(p.allowances)+'</td><td>'+money(p.bonus)+'</td><td>'+money(p.deductions)+'</td><td>'+Number(p.late_minutes||0)+'</td><td>'+Number(p.absent_days||0)+'</td><td>'+Number(p.leave_days||0)+'</td><td>'+Number(p.unused_leave_days||0)+'</td><td>'+Number(p.overtime_minutes||0)+'</td><td>'+money(p.net_salary)+'</td><td>'+safe(p.payment_status)+'</td><td>'+safe(p.paid_date||"—")+'</td></tr>').join(""):'<tr><td colspan="15">কোনো Payroll পাওয়া যায়নি।</td></tr>';
  const sum=key=>rows.reduce((s,p)=>s+Number(p[key]||0),0);
  $("payrollTotalNet").textContent=payrollMoney(sum("net_salary"));
  $("payrollPaidTotal").textContent=payrollMoney(rows.filter(p=>p.payment_status==="paid").reduce((s,p)=>s+Number(p.net_salary),0));
  $("payrollPendingTotal").textContent=payrollMoney(rows.filter(p=>p.payment_status==="pending").reduce((s,p)=>s+Number(p.net_salary),0));
 }
-["payrollBasic","payrollAllowances","payrollBonus","payrollDeductions"].forEach(id=>$(id).addEventListener("input",payrollNet));
+["payrollBasic","payrollAllowances","payrollBonus","payrollDeductions"].forEach(id=>$(id).addEventListener("input",payrollAttendancePreview));$("payrollEmployee").onchange=payrollAttendancePreview;$("payrollMonth").onchange=payrollAttendancePreview;
 $("payrollPaymentStatus").onchange=()=>{if(value("payrollPaymentStatus")==="paid"&&!value("payrollPaidDate"))$("payrollPaidDate").value=today();if(value("payrollPaymentStatus")==="pending")$("payrollPaidDate").value="";};
 $("payrollForm").onsubmit=async e=>{
  e.preventDefault();
- if(!activeUser||activeUser.id!==ADMIN_UID){say($("payrollStatus"),"শুধু Super Admin Payroll সংরক্ষণ করতে পারবেন।",true);return;}
+ if(!activeUser||(!isManagerUser&&activeUser.id!==ADMIN_UID)){say($("payrollStatus"),"অনুমোদিত Payroll access নেই।",true);return;}
  const employee=value("payrollEmployee"),month=value("payrollMonth"),basic=Number(value("payrollBasic")),allow=Number(value("payrollAllowances")||0),bonus=Number(value("payrollBonus")||0),deduct=Number(value("payrollDeductions")||0),status=value("payrollPaymentStatus"),paidDate=value("payrollPaidDate")||null;
  if(!employee||!month){say($("payrollStatus"),"Employee ও Payroll Month নির্বাচন করুন।",true);return;}
  if([basic,allow,bonus,deduct].some(n=>!Number.isFinite(n)||n<0)||deduct>basic+allow+bonus){say($("payrollStatus"),"বেতনের অঙ্ক সঠিক দিন; Deduction মোট আয়ের বেশি হতে পারবে না।",true);return;}
@@ -858,7 +858,7 @@ $("payrollForm").onsubmit=async e=>{
  const {data,error}=await db.rpc("bmp_save_payroll",{p_employee_id:employee,p_payroll_month:month+"-01",p_basic:basic,p_allowances:allow,p_bonus:bonus,p_deductions:deduct,p_status:status,p_paid_date:paidDate,p_payment_method:value("payrollPaymentMethod")||null,p_notes:value("payrollNotes")||null,p_account_id:status==="paid"?value("payrollAccount"):null});
  $("savePayrollBtn").disabled=false;
  if(error){say($("payrollStatus"),"Payroll সংরক্ষণ হয়নি: "+error.message,true);return;}
- say($("payrollStatus"),"Payroll সংরক্ষিত হয়েছে।"+(status==="paid"?" Salary Expense Account-এ পোস্ট হয়েছে।":""));
+ say($("payrollStatus"),"Payroll সংরক্ষিত হয়েছে। Late: "+data.late_minutes+" মিনিট, Absent: "+data.absent_days+" দিন, Leave: "+data.leave_days+" দিন, Unused Leave Bonus: ৳ "+money(data.unused_leave_bonus)+", Overtime: "+data.overtime_minutes+" মিনিট (৳ "+money(data.overtime_amount)+")."+(status==="paid"?" Salary Expense Account-এ পোস্ট হয়েছে।":""));
  $("payrollForm").reset();$("payrollMonth").value=new Date().toISOString().slice(0,7);$("payrollPaymentStatus").value="pending";payrollNet();await loadPayroll();
 };
 $("resetPayrollBtn").onclick=()=>{$("payrollForm").reset();$("payrollMonth").value=new Date().toISOString().slice(0,7);$("payrollNetPreview").textContent="৳ 0.00";};
@@ -867,7 +867,7 @@ $("payrollTab").onclick=async()=>{
  ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","employeeModule","attendanceModule"].forEach(id=>{const el=$(id);if(el)el.hidden=true;});
  $("customerModulePanel").hidden=true;$("customerFormPanel").hidden=true;$("permissionsModule").hidden=true;$("payrollModule").hidden=false;
  ["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","customerDueTab","salesReturnTab","purchaseReturnTab","employeesTab","attendanceTab","permissionsTab"].forEach(id=>$(id).classList.remove("active"));
- $("payrollTab").classList.add("active");await loadPayrollEmployees();await loadPayroll();await loadPaymentAccountOptions();
+ $("payrollTab").classList.add("active");await loadPayrollEmployees();await loadPayroll();if(!isManagerUser)await loadPaymentAccountOptions();else{$("payrollBranch").disabled=true;$("payrollPaymentStatus").value="pending";$("payrollPaymentStatus").querySelector('option[value="paid"]').hidden=true;$("payrollAccount").closest("label").hidden=true;$("payrollPaidDate").closest("label").hidden=true;$("payrollPaymentMethod").closest("label").hidden=true;}
 };
 ["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","customerDueTab","salesReturnTab","purchaseReturnTab","employeesTab","attendanceTab","permissionsTab"].forEach(id=>{const tab=$(id);if(tab)tab.addEventListener("click",()=>{$("payrollModule").hidden=true;});});
 $("payrollMonth").value=new Date().toISOString().slice(0,7);
