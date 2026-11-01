@@ -85,7 +85,7 @@ begin
   if v_amount > v_purchase.due then raise exception 'Payment exceeds outstanding due'; end if;
 
   v_paid := v_purchase.paid + v_amount;
-  v_due := greatest(v_purchase.total - v_paid,0);
+  v_due := greatest(v_purchase.due - v_amount,0);
 
   insert into public.erp_supplier_payments(
     supplier_id,purchase_id,amount,payment_method,reference_number,note,created_by,account_id
