@@ -89,8 +89,36 @@ $("loginForm").onsubmit=async e=>{
  if(error){say($("loginStatus"),"Login হয়নি: "+error.message,true);return;}await verifyUser(data.user);
 };
 async function verifyUser(user){
- if(!user||user.id!==ADMIN_UID||String(user.email).toLowerCase()!==ADMIN_EMAIL){await db.auth.signOut();$("workspace").hidden=true;$("loginPanel").hidden=false;say($("loginStatus"),"এই অ্যাকাউন্টটি Super Admin হিসেবে অনুমোদিত নয়।",true);return;}
- activeUser=user;$("loginPanel").hidden=true;$("workspace").hidden=false;$("logoutBtn").hidden=false;$("dashboardTab").click();
+ const isSuperAdmin=!!user&&user.id===ADMIN_UID&&String(user.email).toLowerCase()===ADMIN_EMAIL;
+ let isManager=false;
+ if(user&&!isSuperAdmin){
+  const {data,error}=await db.rpc("bmp_can_manage_settings");
+  isManager=!error&&data===true;
+ }
+ if(!isSuperAdmin&&!isManager){
+  await db.auth.signOut();activeUser=null;$("workspace").hidden=true;$("loginPanel").hidden=false;
+  say($("loginStatus"),"এই অ্যাকাউন্টটি Super Admin বা অনুমোদিত Manager হিসেবে সক্রিয় নয়।",true);return;
+ }
+ activeUser=user;$("loginPanel").hidden=true;$("workspace").hidden=false;$("logoutBtn").hidden=false;
+ document.querySelectorAll(".tab").forEach(tab=>{tab.hidden=false;});
+ $("exportExcelBtn").hidden=false;$("exportPdfBtn").hidden=false;
+ if(isManager){
+  const allowed=new Set(["shopSettingsTab","invoiceSettingsTab","branchesTab"]);
+  document.querySelectorAll(".tab").forEach(tab=>{tab.hidden=!allowed.has(tab.id);});
+  $("exportExcelBtn").hidden=true;$("exportPdfBtn").hidden=true;
+  document.querySelector(".welcome .eyebrow").textContent="MANAGER SETTINGS ACCESS";
+  document.querySelector(".welcome h1").textContent="Settings Workspace";
+  document.querySelector(".welcome p:not(.eyebrow)").textContent="আপনার অনুমতি অনুযায়ী Shop, Invoice ও Branch Settings";
+  document.querySelector(".secure").textContent="Manager · Settings only";
+  ["dashboardModule","customerModulePanel","customerFormPanel","medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","employeeModule","attendanceModule","permissionsModule","payrollModule","accountsModule","dueOverviewModule","profitLossModule","financialReportsModule","stockReportsModule","employeeReportsModule","suppliersModule","onlineWebsiteModule","onlineOrdersModule","backupModule","activityLogModule","photoManagementModule","fingerprintModule"].forEach(id=>{const el=$(id);if(el)el.hidden=true;});
+  $("shopSettingsTab").click();
+ }else{
+  document.querySelector(".welcome .eyebrow").textContent="MANAGEMENT WORKSPACE";
+  document.querySelector(".welcome h1").textContent="Pharmacy ERP";
+  document.querySelector(".welcome p:not(.eyebrow)").textContent="প্রথম ধাপ: Customer Management";
+  document.querySelector(".secure").textContent="Super Admin access";
+  $("dashboardTab").click();
+ }
 }
 $("logoutBtn").onclick=async()=>{await db.auth.signOut();activeUser=null;$("workspace").hidden=true;$("loginPanel").hidden=false;$("logoutBtn").hidden=true;};
 
