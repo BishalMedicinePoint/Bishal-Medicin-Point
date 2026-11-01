@@ -410,7 +410,7 @@ function openEmployeeForm(row=null){
  resetEmployeeForm();$("employeeFormPanel").hidden=false;$("linkEmployeeAccountBtn").disabled=!row;say($("employeeLoginStatus"),"");
  if(row){
   $("employeeFormTitle").textContent="Edit Employee";$("employeeRecordId").value=row.id;$("employeeCode").value=row.employee_code;
-  const map={employeeName:"full_name",employeeMobile:"mobile_number",employeeAltPhone:"alternative_phone",employeeEmail:"email",employeeJobTitle:"job_title",employeeDepartment:"department",employeeAddress:"address",employeeEmergencyName:"emergency_contact_name",employeeEmergencyPhone:"emergency_contact_phone",employeeJoiningDate:"joining_date",employeeEmploymentStatus:"employment_status",employeeNotes:"notes",employeeLoginEmail:"login_email"};
+  const map={employeeName:"full_name",employeeMobile:"mobile_number",employeeAltPhone:"alternative_phone",employeeEmail:"email",employeeJobTitle:"job_title",employeeSystemRole:"system_role",employeeDepartment:"department",employeeAddress:"address",employeeEmergencyName:"emergency_contact_name",employeeEmergencyPhone:"emergency_contact_phone",employeeJoiningDate:"joining_date",employeeEmploymentStatus:"employment_status",employeeNotes:"notes",employeeLoginEmail:"login_email"};
   Object.entries(map).forEach(([id,key])=>$(id).value=row[key]??"");
  }
  $("employeeFormPanel").scrollIntoView({behavior:"smooth",block:"start"});
@@ -428,14 +428,14 @@ function renderEmployees(){
  const term=value("employeeSearch").toLowerCase();
  const rows=employees.filter(e=>[e.employee_code,e.full_name,e.mobile_number,e.job_title,e.department].some(v=>String(v||"").toLowerCase().includes(term)));
  if(!rows.length){$("employeeRows").innerHTML='<tr><td colspan="9">কোনো Employee পাওয়া যায়নি।</td></tr>';return;}
- $("employeeRows").innerHTML=rows.map(e=>'<tr><td><b>'+safe(e.employee_code)+'</b></td><td>'+safe(e.full_name)+'</td><td>'+safe(e.mobile_number)+'</td><td>'+safe(e.job_title)+'</td><td>'+safe(e.department||"—")+'</td><td>'+safe(e.joining_date)+'</td><td>'+safe(e.employment_status)+'</td><td>'+(e.login_enabled?'Linked · '+safe(e.login_email||''):'Not linked')+'</td><td><button class="btn muted" data-employee-edit="'+safe(e.id)+'" type="button">Edit</button></td></tr>').join("");
+ $("employeeRows").innerHTML=rows.map(e=>'<tr><td><b>'+safe(e.employee_code)+'</b></td><td>'+safe(e.full_name)+'</td><td>'+safe(e.mobile_number)+'</td><td>'+safe(e.job_title)+(e.system_role==='manager'?' · Manager Access':'')+'</td><td>'+safe(e.department||"—")+'</td><td>'+safe(e.joining_date)+'</td><td>'+safe(e.employment_status)+'</td><td>'+(e.login_enabled?'Linked · '+safe(e.login_email||''):'Not linked')+'</td><td><button class="btn muted" data-employee-edit="'+safe(e.id)+'" type="button">Edit</button></td></tr>').join("");
  $("employeeRows").querySelectorAll("[data-employee-edit]").forEach(b=>b.onclick=()=>openEmployeeForm(employees.find(e=>e.id===b.dataset.employeeEdit)));
 }
 $("employeeForm").onsubmit=async e=>{
  e.preventDefault();if(!activeUser||activeUser.id!==ADMIN_UID)return;
  const id=value("employeeRecordId"),name=value("employeeName"),mobile=value("employeeMobile"),job=value("employeeJobTitle");
  if(!name||!mobile||!job){say($("employeeStatusText"),"Name, Mobile ও Job Title আবশ্যক।",true);return;}
- if(!value("employeeBranch")){say($("employeeStatusText"),"Employee-এর Branch নির্বাচন করুন।",true);return;}const row={branch_id:value("employeeBranch"),full_name:name,mobile_number:mobile,alternative_phone:value("employeeAltPhone")||null,email:value("employeeEmail")||null,job_title:job,department:value("employeeDepartment")||null,address:value("employeeAddress")||null,emergency_contact_name:value("employeeEmergencyName")||null,emergency_contact_phone:value("employeeEmergencyPhone")||null,joining_date:value("employeeJoiningDate"),employment_status:value("employeeEmploymentStatus"),notes:value("employeeNotes")||null};
+ if(!value("employeeBranch")){say($("employeeStatusText"),"Employee-এর Branch নির্বাচন করুন।",true);return;}const row={branch_id:value("employeeBranch"),full_name:name,mobile_number:mobile,alternative_phone:value("employeeAltPhone")||null,email:value("employeeEmail")||null,job_title:job,system_role:value("employeeSystemRole")||"employee",department:value("employeeDepartment")||null,address:value("employeeAddress")||null,emergency_contact_name:value("employeeEmergencyName")||null,emergency_contact_phone:value("employeeEmergencyPhone")||null,joining_date:value("employeeJoiningDate"),employment_status:value("employeeEmploymentStatus"),notes:value("employeeNotes")||null};
  say($("employeeStatusText"),"Employee সংরক্ষণ হচ্ছে...");
  const result=id?await db.from("erp_employees").update(row).eq("id",id).select("id").single():await db.from("erp_employees").insert({...row,created_by:activeUser.id}).select("id,employee_code").single();
  if(result.error){say($("employeeStatusText"),"সংরক্ষণ হয়নি: "+result.error.message,true);return;}
@@ -1105,7 +1105,7 @@ document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="dashboardTab")t.addEven
 /* Supabase-backed settings, branch register, audit viewer, photo storage and data export */
 (()=>{
  const $=id=>document.getElementById(id);
- let client=null,ready=false;
+ let client=null,ready=false,currentActorId=null;
  const adminId="7a3166f2-e4bb-42b8-a649-033dd2d02090";
  const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
  async function connect(){
@@ -1113,7 +1113,10 @@ document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="dashboardTab")t.addEven
    if(!window.supabase?.createClient||!window.BMP_SUPABASE_URL||!window.BMP_SUPABASE_ANON_KEY)return;
    client=window.supabase.createClient(window.BMP_SUPABASE_URL,window.BMP_SUPABASE_ANON_KEY);
    const {data:{session}}=await client.auth.getSession();
-   ready=!!session&&session.user.id===adminId;
+   currentActorId=session?.user?.id||null;
+   if(!session){ready=false;return;}
+   if(currentActorId===adminId)ready=true;
+   else{const {data:canManage,error:roleError}=await client.rpc("bmp_can_manage_settings");ready=!roleError&&canManage===true;}
    if(ready){await loadSettings("erp_shop_settings",["shopName","shopPhone","shopEmail","shopAddress"],{shop_name:"shopName",phone:"shopPhone",email:"shopEmail",address:"shopAddress"});await loadSettings("erp_invoice_settings",["invoiceTitle","invoicePrefix","invoicePaper","invoiceLogo","invoiceFooter"],{invoice_title:"invoiceTitle",invoice_prefix:"invoicePrefix",paper_size:"invoicePaper",show_logo:"invoiceLogo",footer_text:"invoiceFooter"});await renderBranches();await renderLog();}
   }catch(e){console.warn("ERP cloud module connection:",e);}
  }
@@ -1122,8 +1125,8 @@ document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="dashboardTab")t.addEven
   Object.entries(map).forEach(([col,id])=>{if(data[col]!==null&&data[col]!==undefined)$(id).value=col==="show_logo"?(data[col]?"yes":"no"):String(data[col]);});
  }
  async function saveSettings(table,values,status,label){
-  if(!ready){$(status).textContent="Admin Supabase session নেই; cloud save করা যায়নি।";return;}
-  const {error}=await client.from(table).upsert({...values,id:true,updated_by:adminId,updated_at:new Date().toISOString()});
+  if(!ready){$(status).textContent="শুধু Super Admin বা অনুমোদিত Manager cloud settings পরিবর্তন করতে পারবেন।";return;}
+  const {error}=await client.from(table).upsert({...values,id:true,updated_by:currentActorId,updated_at:new Date().toISOString()});
   $(status).textContent=error?"Cloud save failed: "+error.message:label+" Supabase-এ সংরক্ষিত হয়েছে।";
  }
  $("shopSettingsForm").addEventListener("submit",e=>{e.preventDefault();saveSettings("erp_shop_settings",{shop_name:$("shopName").value.trim(),phone:$("shopPhone").value.trim(),email:$("shopEmail").value.trim(),address:$("shopAddress").value.trim()},"shopSettingsStatus","Shop settings");});
@@ -1135,7 +1138,7 @@ document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="dashboardTab")t.addEven
   $("branchRows").innerHTML=data.length?data.map(x=>'<tr><td>'+esc(x.branch_name)+'</td><td>'+esc(x.branch_code)+'</td><td>'+esc(x.phone||"")+'</td><td>'+esc(x.address||"")+'</td><td>'+ (x.is_active?'Active':'Inactive') +'</td></tr>').join(""):'<tr><td colspan="5">No branch added.</td></tr>';
  }
  $("branchForm").addEventListener("submit",async e=>{
-  e.preventDefault();if(!ready){$("branchStatus").textContent="Admin Supabase session নেই; cloud save হয়নি।";return;}
+  e.preventDefault();if(!ready){$("branchStatus").textContent="শুধু Super Admin বা অনুমোদিত Manager branch settings পরিবর্তন করতে পারবেন।";return;}
   const name=$("branchName").value.trim(),code=$("branchCode").value.trim(),phone=$("branchPhone").value.trim(),address=$("branchAddress").value.trim();
   const {data,error}=await client.rpc("bmp_save_branch",{p_branch_name:name,p_branch_code:code,p_phone:phone,p_address:address});
   $("branchStatus").textContent=error?"Branch save failed: "+error.message:"Branch Supabase-এ সংরক্ষিত হয়েছে।";if(!error){e.target.reset();await renderBranches();}
@@ -1147,7 +1150,7 @@ document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="dashboardTab")t.addEven
   $("activityLogRows").innerHTML=data.length?data.map(x=>'<tr><td>'+esc(new Date(x.changed_at).toLocaleString())+'</td><td>'+esc(x.operation+" "+x.table_name+" "+(x.record_id||""))+'</td></tr>').join(""):'<tr><td colspan="2">No database activity yet.</td></tr>';
  }
  async function renderPhotoGallery(){
-  if(!ready){$("photoManagerStatus").textContent="Admin Supabase session নেই; private gallery দেখা যাবে না।";return;}
+  if(!ready){$("photoManagerStatus").textContent="অনুমোদিত Settings account ছাড়া private gallery দেখা যাবে না।";return;}
   $("photoManagerPreview").innerHTML="<p>ছবি লোড হচ্ছে...</p>";
   const {data,error}=await client.storage.from("erp-photos").list("uploads",{limit:100,sortBy:{column:"created_at",order:"desc"}});
   if(error){$("photoManagerPreview").textContent="Gallery load হয়নি: "+error.message;return;}
@@ -1167,7 +1170,7 @@ document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="dashboardTab")t.addEven
  }
  $("refreshPhotoGallery").onclick=renderPhotoGallery;
  $("photoManagerInput").addEventListener("change",async e=>{
-  if(!ready){$("photoManagerStatus").textContent="Admin Supabase session নেই; cloud upload করা যায়নি।";return;}
+  if(!ready){$("photoManagerStatus").textContent="অনুমোদিত Settings account ছাড়া cloud upload করা যাবে না।";return;}
   const files=[...(e.target.files||[])];let ok=0,failed=0;
   for(const file of files){
    if(!/^image\/(png|jpeg|webp)$/.test(file.type)||file.size>5*1024*1024){failed++;continue;}
@@ -1180,7 +1183,7 @@ document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="dashboardTab")t.addEven
   $("photoManagerStatus").textContent=ok+"টি ছবি upload হয়েছে; "+failed+"টি বাদ/ব্যর্থ। "+$("photoManagerStatus").textContent;
  });
  $("downloadLocalBackup").addEventListener("click",async()=>{
-  if(!ready){$("backupStatus").textContent="Admin Supabase session ছাড়া database backup নেওয়া যাবে না।";return;}
+  if(!ready){$("backupStatus").textContent="অনুমোদিত Settings account ছাড়া database export নেওয়া যাবে না।";return;}
   const tables=["customers","customer_ledger","medicines","erp_medicines","erp_medicine_batches","erp_sales_invoices","erp_sales_invoice_items","erp_sales_returns","erp_sales_return_items","erp_purchase_invoices","erp_purchase_invoice_items","erp_purchase_returns","erp_purchase_return_items","erp_suppliers","erp_supplier_ledger","erp_supplier_payments","erp_customer_payments","erp_employees","erp_employee_permissions","erp_attendance","erp_attendance_settings","erp_employee_payroll","erp_accounts","erp_account_transactions","erp_stock_movements","erp_branches","erp_shop_settings","erp_invoice_settings","erp_online_order_notes","erp_activity_log"];
   const backup={product:"Bishal Medicine Point ERP data export",createdAt:new Date().toISOString(),formatVersion:2,tables:{},rowCounts:{},complete:true};
   for(const table of tables){
