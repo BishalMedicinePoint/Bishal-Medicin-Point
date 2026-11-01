@@ -53,6 +53,11 @@
   <section id="attendanceCard" class="portal-card" hidden>
    <h2>আমার Attendance</h2>
    <p>শুধু আপনার নিজের হাজিরার তথ্য দেখানো হবে।</p>
+   <div class="portal-actions" style="margin:12px 0">
+    <button id="checkInBtn" class="btn" type="button" hidden>আজকের Check In</button>
+    <button id="checkOutBtn" class="btn muted" type="button" hidden>আজকের Check Out</button>
+   </div>
+   <p id="attendanceActionStatus" class="portal-status" role="status"></p>
    <div class="portal-scroll"><table class="portal-table"><thead><tr><th>Date</th><th>Status</th><th>Check In</th><th>Check Out</th><th>Notes</th></tr></thead><tbody id="attendanceRows"><tr><td colspan="5">তথ্য লোড হচ্ছে...</td></tr></tbody></table></div>
   </section>
   <section id="payrollCard" class="portal-card" hidden>
