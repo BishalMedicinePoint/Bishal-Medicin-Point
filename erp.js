@@ -1219,30 +1219,37 @@ document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="dashboardTab")t.addEven
  connect();
 })();
 
-/* Additional roadmap modules (31-module workspace) */
+/* Additional module navigation only.
+   Data persistence is handled by the Supabase-backed module handlers above.
+   Keep this block free of localStorage fallbacks and duplicate form handlers. */
 (()=>{
- const esc=value=>String(value??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
- const $id=id=>document.getElementById(id), read=(k,fallback)=>{try{return JSON.parse(localStorage.getItem("bmp-erp-"+k))??fallback}catch(e){return fallback}}, write=(k,v)=>{try{localStorage.setItem("bmp-erp-"+k,JSON.stringify(v));return true}catch(e){return false}};
- const log=message=>{const a=read("activity",[]);a.unshift({at:new Date().toLocaleString(),message});write("activity",a.slice(0,200));renderLog();};
- const renderLog=()=>{const el=$id("activityLogRows");if(!el)return;const a=read("activity",[]);el.innerHTML=a.length?a.map(x=>'<tr><td>'+String(x.at).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))+'</td><td>'+String(x.message).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))+'</td></tr>').join(""):'<tr><td colspan="2">No local activity.</td></tr>';};
- const moduleIds=["dashboardModule","customerModulePanel","customerFormPanel","medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","employeeModule","attendanceModule","permissionsModule","payrollModule","accountsModule","dueOverviewModule","profitLossModule","financialReportsModule","stockReportsModule","employeeReportsModule","suppliersModule","invoiceSettingsModule","shopSettingsModule","branchesModule","onlineWebsiteModule","onlineOrdersModule","backupModule","activityLogModule","photoManagementModule","fingerprintModule"];
- const tabMap=[["suppliersTab","suppliersModule"],["invoiceSettingsTab","invoiceSettingsModule"],["shopSettingsTab","shopSettingsModule"],["branchesTab","branchesModule"],["onlineWebsiteTab","onlineWebsiteModule"],["onlineOrdersTab","onlineOrdersModule"],["backupTab","backupModule"],["activityLogTab","activityLogModule"],["photoManagementTab","photoManagementModule"],["fingerprintTab","fingerprintModule"]];
- tabMap.forEach(([tabId,panelId])=>{$id(tabId).addEventListener("click",()=>{moduleIds.forEach(id=>{const el=$id(id);if(el)el.hidden=true;});$id(panelId).hidden=false;document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));$id(tabId).classList.add("active");if(panelId==="branchesModule")renderBranches();if(panelId==="onlineOrdersModule")renderOrders();if(panelId==="activityLogModule")renderLog();});});
- $id("openPurchaseFromSupplier").onclick=()=>$id("purchaseTab").click();
- const invoiceFields=["invoiceTitle","invoicePrefix","invoicePaper","invoiceLogo","invoiceFooter"],shopFields=["shopName","shopPhone","shopEmail","shopAddress"],websiteFields=["onlineWebsiteUrl","catalogueEnabled","cataloguePrices"];
- function loadFields(key,fields){const data=read(key,{});fields.forEach(id=>{if(data[id]!==undefined)$id(id).value=data[id];});}
- function saveFields(key,fields,statusId,label){const data={};fields.forEach(id=>data[id]=$id(id).value);const ok=write(key,data);$id(statusId).textContent=ok?label+" সংরক্ষণ হয়েছে (এই browser-এ)।":"Browser storage-এ জায়গা নেই; সংরক্ষণ হয়নি।";if(ok)log(label+" updated");}
- loadFields("invoiceSettings",invoiceFields);loadFields("shopSettings",shopFields);loadFields("websiteSettings",websiteFields);
- $id("invoiceSettingsForm").onsubmit=e=>{e.preventDefault();saveFields("invoiceSettings",invoiceFields,"invoiceSettingsStatus","Invoice settings");};
- $id("shopSettingsForm").onsubmit=e=>{e.preventDefault();saveFields("shopSettings",shopFields,"shopSettingsStatus","Shop settings");};
- $id("onlineWebsiteForm").onsubmit=e=>{e.preventDefault();saveFields("websiteSettings",websiteFields,"onlineWebsiteStatus","Website settings");};
- const renderBranches=async()=>{const {data,error}=await db.from("erp_branches").select("id,branch_name,branch_code,phone,address,is_active").order("branch_name");if(error){$id("branchStatus").textContent="Branch load হয়নি: "+error.message;return;}const a=data||[];$id("branchRows").innerHTML=a.length?a.map(x=>'<tr><td>'+esc(x.branch_name)+'</td><td>'+esc(x.branch_code)+'</td><td>'+esc(x.phone||"")+'</td><td>'+esc(x.address||"")+'</td><td>'+(x.is_active?"Active":"Inactive")+'</td></tr>').join(""):'<tr><td colspan="5">No branch added.</td></tr>';};
- $id("branchForm").onsubmit=async e=>{e.preventDefault();const x={name:$id("branchName").value.trim(),code:$id("branchCode").value.trim(),phone:$id("branchPhone").value.trim(),address:$id("branchAddress").value.trim()};const btn=e.target.querySelector('button[type="submit"]');btn.disabled=true;const {data,error}=await db.rpc("bmp_save_branch",{p_branch_name:x.name,p_branch_code:x.code,p_phone:x.phone||null,p_address:x.address||null});btn.disabled=false;if(error){$id("branchStatus").textContent="Branch save হয়নি: "+error.message;return;}e.target.reset();await renderBranches();$id("branchStatus").textContent="Branch Database-এ সংরক্ষিত হয়েছে।";log("Branch added: "+x.code);};
- const renderOrders=()=>{const a=read("orders",[]);$id("onlineOrderRows").innerHTML=a.length?a.map(x=>'<tr><td>'+esc(x.date)+'</td><td>'+esc(x.customer)+'</td><td>'+esc(x.phone)+'</td><td>'+esc(x.details)+'</td><td>Draft</td></tr>').join(""):'<tr><td colspan="5">No order notes.</td></tr>';};
- $id("onlineOrderForm").onsubmit=e=>{e.preventDefault();const a=read("orders",[]),x={date:new Date().toLocaleDateString(),customer:$id("onlineCustomer").value.trim(),phone:$id("onlinePhone").value.trim(),details:$id("onlineDetails").value.trim()};a.unshift(x);write("orders",a.slice(0,300));e.target.reset();renderOrders();$id("onlineOrderStatus").textContent="Order note local browser-এ সংরক্ষিত হয়েছে; এটি live online order নয়।";log("Manual online order note saved");};
- $id("downloadLocalBackup").onclick=()=>{const keys=["invoiceSettings","shopSettings","branches","websiteSettings","orders","activity"],data={product:"Bishal Medicine Point ERP local settings backup",createdAt:new Date().toISOString(),data:{}};keys.forEach(k=>data.data[k]=read(k,null));const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="bmp-local-settings-backup.json";a.click();URL.revokeObjectURL(url);$id("backupStatus").textContent="Local settings backup download শুরু হয়েছে; Supabase database অন্তর্ভুক্ত নয়।";};
- $id("restoreLocalBackup").onchange=async e=>{const file=e.target.files?.[0];if(!file)return;try{const data=JSON.parse(await file.text());if(!data.data||typeof data.data!=="object")throw new Error("Invalid backup");Object.entries(data.data).forEach(([k,v])=>{if(["invoiceSettings","shopSettings","branches","websiteSettings","orders","activity"].includes(k))write(k,v);});loadFields("invoiceSettings",invoiceFields);loadFields("shopSettings",shopFields);loadFields("websiteSettings",websiteFields);renderBranches();renderOrders();renderLog();$id("backupStatus").textContent="Local settings restore হয়েছে। Database restore হয়নি।";log("Local settings restored");}catch(err){$id("backupStatus").textContent="Restore failed: "+err.message;}e.target.value="";};
- $id("clearLocalActivity").onclick=()=>{write("activity",[]);renderLog();};
- // Photo uploads and private gallery are handled by the Supabase-backed module above.
- renderBranches();renderOrders();renderLog();
+ const $id=id=>document.getElementById(id);
+ const moduleIds=[
+  "dashboardModule","customerModulePanel","customerFormPanel","medicineModule","batchModule",
+  "barcodeModule","posModule","purchaseModule","stockModule","customerDueModule",
+  "salesReturnModule","purchaseReturnModule","employeeModule","attendanceModule",
+  "permissionsModule","payrollModule","accountsModule","dueOverviewModule","profitLossModule",
+  "financialReportsModule","stockReportsModule","employeeReportsModule","suppliersModule",
+  "invoiceSettingsModule","shopSettingsModule","branchesModule","onlineWebsiteModule",
+  "onlineOrdersModule","backupModule","activityLogModule","photoManagementModule","fingerprintModule"
+ ];
+ const tabMap=[
+  ["suppliersTab","suppliersModule"],["invoiceSettingsTab","invoiceSettingsModule"],
+  ["shopSettingsTab","shopSettingsModule"],["branchesTab","branchesModule"],
+  ["onlineWebsiteTab","onlineWebsiteModule"],["onlineOrdersTab","onlineOrdersModule"],
+  ["backupTab","backupModule"],["activityLogTab","activityLogModule"],
+  ["photoManagementTab","photoManagementModule"],["fingerprintTab","fingerprintModule"]
+ ];
+ tabMap.forEach(([tabId,panelId])=>{
+  const tab=$id(tabId),panel=$id(panelId);
+  if(!tab||!panel)return;
+  tab.addEventListener("click",()=>{
+   moduleIds.forEach(id=>{const el=$id(id);if(el)el.hidden=true;});
+   panel.hidden=false;
+   document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+   tab.classList.add("active");
+  });
+ });
+ const supplierPurchase=$id("openPurchaseFromSupplier");
+ if(supplierPurchase)supplierPurchase.addEventListener("click",()=>{$id("purchaseTab")?.click();});
 })();
