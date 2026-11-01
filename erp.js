@@ -551,7 +551,7 @@ async function linkEmployeeLoginAccount(){
  const {data,error}=await db.rpc("erp_link_employee_auth_account",{p_employee_id:employee,p_login_email:email});
  btn.disabled=false;
  if(error){say($("employeeLoginStatus"),"Account link হয়নি: "+error.message,true);return;}
- say($("employeeLoginStatus"),"Login account linked: "+(data?.[0]?.linked_email||email)+". এখন Custom Permission Management-এ প্রয়োজনীয় permission দিন। Employee Portal-এর সীমিত self-service access চালু; অন্যান্য ERP module access এখনো RLS দিয়ে সম্পূর্ণ সুরক্ষিত নয়।");
+ say($("employeeLoginStatus"),"Login account linked: "+(data?.[0]?.linked_email||email)+". পরের ধাপ: Custom Permission Management-এ প্রয়োজনীয় View/Create permission দিন। কর্মচারী শুধু অনুমোদিত ও security-enabled workspace-ই ব্যবহার করতে পারবে।");
  await loadEmployees();
 }
 $("linkEmployeeAccountBtn").onclick=linkEmployeeLoginAccount;
@@ -759,6 +759,9 @@ async function loadPermissionEmployees(){
  const selected=value("permissionEmployee");
  $("permissionEmployee").innerHTML='<option value="">Employee নির্বাচন করুন</option>'+(data||[]).map(e=>'<option value="'+e.id+'">'+safe(e.employee_code)+' · '+safe(e.full_name)+'</option>').join("");
  if(selected&&data.some(e=>e.id===selected))$("permissionEmployee").value=selected;
+ const hasEmployees=(data||[]).length>0;
+ $("savePermissionsBtn").disabled=!hasEmployees;
+ if(!hasEmployees){$("permissionRows").innerHTML='<tr><td colspan="7">এখনো কোনো Employee তৈরি হয়নি। আগে Employee Management থেকে Employee যোগ করুন।</td></tr>';say($("permissionStatus"),"Permission দিতে হলে আগে Employee তৈরি করতে হবে।");}
 }
 function renderPermissionRows(saved=[]){
  const map=new Map(saved.map(p=>[p.module_key,p]));
@@ -769,7 +772,8 @@ function renderPermissionRows(saved=[]){
 }
 async function loadEmployeePermissions(){
  const employee=value("permissionEmployee");
- if(!employee){$("permissionRows").innerHTML='<tr><td colspan="7">প্রথমে Employee নির্বাচন করুন।</td></tr>';return;}
+ if(!employee){$("permissionRows").innerHTML='<tr><td colspan="7">প্রথমে Employee নির্বাচন করুন।</td></tr>';$("savePermissionsBtn").disabled=true;return;}
+ $("savePermissionsBtn").disabled=false;
  const {data,error}=await db.from("erp_employee_permissions").select("*").eq("employee_id",employee);
  if(error){say($("permissionStatus"),"Permission load হয়নি: "+error.message,true);return;}
  renderPermissionRows(data||[]);say($("permissionStatus"),"Saved permission লোড হয়েছে।");
@@ -788,7 +792,7 @@ $("savePermissionsBtn").onclick=async()=>{
  const {error}=await db.from("erp_employee_permissions").upsert(rows,{onConflict:"employee_id,module_key"});
  $("savePermissionsBtn").disabled=false;
  if(error){say($("permissionStatus"),"Permission সংরক্ষণ হয়নি: "+error.message,true);return;}
- say($("permissionStatus"),"এই Employee-এর ৩১টি Module-এর Permission সংরক্ষণ হয়েছে। Employee Portal-এর অনুমোদিত self-service feature-এ প্রযোজ্য; অন্য ERP module access এখনো চালু নয়।");
+ say($("permissionStatus"),"৩১টি Module-এর Permission সংরক্ষিত হয়েছে। কার্যকর Employee workspace: POS, Purchase, Stock, Sales Return, Purchase Return, Customer Due, Supplier Due এবং অনুমোদিত self-service। অন্য Module-এর permission UI-তে সংরক্ষিত হলেও সেগুলোর Employee access আলাদা security implementation ছাড়া চালু হবে না।");
 };
 $("permissionsTab").onclick=async()=>{
  ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","employeeModule","attendanceModule"].forEach(id=>{const el=$(id);if(el)el.hidden=true;});
