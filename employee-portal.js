@@ -12,11 +12,8 @@
     const date=new Date(value);
     return Number.isNaN(date.getTime())?safe(value):date.toLocaleDateString("en-GB");
   }
-  function formatTime(value){
-    if(!value)return "—";
-    const date=new Date(value);
-    return Number.isNaN(date.getTime())?safe(value):date.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
-  }
+  function formatTime(value){if(!value)return "—";const part=String(value).slice(0,5).split(":");if(part.length<2)return safe(value);const h=Number(part[0]),m=Number(part[1]);return new Date(2000,0,1,h,m).toLocaleTimeString("en-BD",{hour:"numeric",minute:"2-digit"});}
+  const minutesOf=value=>{if(!value)return null;const p=String(value).split(":");return Number(p[0])*60+Number(p[1]||0);};
   async function loadPortal(user){
     status("loginStatus","আপনার Employee Access যাচাই হচ্ছে...");
     const {data:access,error}=await client.rpc("bmp_get_my_erp_access");
@@ -33,6 +30,8 @@
     $("jobTitle").textContent=access.job_title||"—";
     $("systemRole").textContent=access.system_role||"employee";
     $("branchId").textContent=access.branch_id||"—";
+    window.employeeDutyStart=access.duty_start_time||"08:00";window.employeeMealBreakMinutes=Number(access.meal_break_minutes||40);window.employeeMonthlyLeaveDays=Number(access.monthly_leave_days||2);
+    $("dutySchedule").textContent=formatTime(access.duty_start_time)+" – "+formatTime(access.duty_end_time)+" · Meal "+window.employeeMealBreakMinutes+" min";
 
     const permissions=access.permissions||{};
     const canViewAttendance=permissions.attendance?.view===true;
@@ -56,12 +55,13 @@
     }
   }
   async function loadAttendance(employeeId){
-    const {data,error}=await client.from("erp_attendance")
-      .select("attendance_date,attendance_status,check_in,check_out,notes")
-      .eq("employee_id",employeeId).order("attendance_date",{ascending:false}).limit(120);
-    if(error){$("attendanceRows").innerHTML='<tr><td colspan="5">Attendance load হয়নি।</td></tr>';status("portalStatus","Attendance: "+error.message,true);return;}
-    const rows=data||[];
-    $("attendanceRows").innerHTML=rows.length?rows.map(row=>'<tr><td>'+formatDate(row.attendance_date)+'</td><td>'+safe(row.attendance_status)+'</td><td>'+formatTime(row.check_in)+'</td><td>'+formatTime(row.check_out)+'</td><td>'+safe(row.notes||"—")+'</td></tr>').join(""):'<tr><td colspan="5">এখনো কোনো Attendance Record নেই।</td></tr>';
+    const {data,error}=await client.from("erp_attendance").select("attendance_date,attendance_status,check_in,meal_break_out,meal_break_in,check_out,notes").eq("employee_id",employeeId).order("attendance_date",{ascending:false}).limit(120);
+    if(error){$("attendanceRows").innerHTML='<tr><td colspan="7">Attendance load হয়নি।</td></tr>';status("portalStatus","Attendance: "+error.message,true);return;}
+    const rows=data||[],month=todayDhaka().slice(0,7),current=rows.filter(r=>String(r.attendance_date).startsWith(month));let dutyMinutes=0,lateMinutes=0,leaveDays=0;
+    const start=minutesOf(window.employeeDutyStart||"08:00"),mealDefault=Number(window.employeeMealBreakMinutes||40);
+    current.forEach(r=>{if(r.attendance_status==="leave")leaveDays++;if(r.attendance_status!=="present")return;const ci=minutesOf(r.check_in),co=minutesOf(r.check_out);if(ci!==null&&start!==null&&ci>start)lateMinutes+=ci-start;if(ci!==null&&co!==null){let span=co-ci;if(span<0)span+=1440;const mo=minutesOf(r.meal_break_out),mi=minutesOf(r.meal_break_in);let meal=mo!==null&&mi!==null?mi-mo:mealDefault;if(meal<0)meal+=1440;dutyMinutes+=Math.max(0,span-meal);}});
+    $("monthlyDutyHours").textContent=(dutyMinutes/60).toFixed(2)+" ঘণ্টা";$("monthlyLateMinutes").textContent=lateMinutes+" মিনিট";$("monthlyLeaveBalance").textContent=Math.max(0,Number(window.employeeMonthlyLeaveDays||2)-leaveDays)+" / "+Number(window.employeeMonthlyLeaveDays||2)+" দিন";
+    $("attendanceRows").innerHTML=rows.length?rows.map(row=>'<tr><td>'+formatDate(row.attendance_date)+'</td><td>'+safe(row.attendance_status)+'</td><td>'+formatTime(row.check_in)+'</td><td>'+formatTime(row.meal_break_out)+'</td><td>'+formatTime(row.meal_break_in)+'</td><td>'+formatTime(row.check_out)+'</td><td>'+safe(row.notes||"—")+'</td></tr>').join(""):'<tr><td colspan="7">এখনো কোনো Attendance Record নেই।</td></tr>';
   }
   function todayDhaka(){
     const parts=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Dhaka",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());
