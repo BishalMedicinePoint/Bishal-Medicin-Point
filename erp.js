@@ -94,7 +94,7 @@ async function verifyUser(user){
  if(user&&!isSuperAdmin){const {data,error}=await db.rpc("bmp_can_manage_settings");isManager=!error&&data===true;}
  if(!isSuperAdmin&&!isManager){
   const {data,error}=await db.rpc("bmp_get_my_erp_access");const access=data||{};
-  if(error||!access.authorized||!(access.permissions?.pos?.view===true||access.permissions?.purchases?.view===true||access.permissions?.stock?.view===true)){
+  if(error||!access.authorized||!(access.permissions?.pos?.view===true||access.permissions?.purchases?.view===true||access.permissions?.stock?.view===true||access.permissions?.sales_returns?.view===true||access.permissions?.purchase_returns?.view===true)){
    await db.auth.signOut();activeUser=null;employeeAccess=null;$("workspace").hidden=true;$("loginPanel").hidden=false;
    say($("loginStatus"),"এই অ্যাকাউন্টে POS বা Purchase View Permission নেই। Super Admin-এর কাছে প্রয়োজনীয় অনুমতি চাইুন।",true);return;
   }
@@ -117,15 +117,17 @@ async function verifyUser(user){
   const canPos=employeeAccess.permissions?.pos?.view===true;
   const canPurchase=employeeAccess.permissions?.purchases?.view===true;
   const canStock=employeeAccess.permissions?.stock?.view===true;
-  document.querySelectorAll(".tab").forEach(tab=>{tab.hidden=!(tab.id==="posTab"&&canPos)&&!(tab.id==="purchaseTab"&&canPurchase)&&!(tab.id==="stockTab"&&canStock);});
+  const canSalesReturn=employeeAccess.permissions?.sales_returns?.view===true;
+  const canPurchaseReturn=employeeAccess.permissions?.purchase_returns?.view===true;
+  document.querySelectorAll(".tab").forEach(tab=>{tab.hidden=!(tab.id==="posTab"&&canPos)&&!(tab.id==="purchaseTab"&&canPurchase)&&!(tab.id==="stockTab"&&canStock)&&!(tab.id==="salesReturnTab"&&canSalesReturn)&&!(tab.id==="purchaseReturnTab"&&canPurchaseReturn);});
   $("exportExcelBtn").hidden=true;$("exportPdfBtn").hidden=true;
   document.querySelector(".welcome .eyebrow").textContent="EMPLOYEE WORKSPACE";
-  const workspaces=[canPos?"POS":null,canPurchase?"Purchase":null,canStock?"Stock":null].filter(Boolean);
+  const workspaces=[canPos?"POS":null,canPurchase?"Purchase":null,canStock?"Stock":null,canSalesReturn?"Sales Return":null,canPurchaseReturn?"Purchase Return":null].filter(Boolean);
   document.querySelector(".welcome h1").textContent=workspaces.join(" · ")+" Workspace";
   document.querySelector(".welcome p:not(.eyebrow)").textContent="শুধু আপনার নির্ধারিত Branch ও Permission অনুযায়ী কাজ করতে পারবেন";
   document.querySelector(".secure").textContent=(employeeAccess.full_name||"Employee")+" · Employee";
   ["dashboardModule","customerModulePanel","customerFormPanel","medicineModule","batchModule","barcodeModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","employeeModule","attendanceModule","permissionsModule","payrollModule","accountsModule","dueOverviewModule","profitLossModule","financialReportsModule","stockReportsModule","employeeReportsModule","suppliersModule","onlineWebsiteModule","onlineOrdersModule","backupModule","activityLogModule","photoManagementModule","fingerprintModule"].forEach(id=>{const el=$(id);if(el)el.hidden=true;});
-  if(canPos)$("posTab").click();else if(canPurchase)$("purchaseTab").click();else $("stockTab").click();
+  if(canPos)$("posTab").click();else if(canPurchase)$("purchaseTab").click();else if(canStock)$("stockTab").click();else if(canSalesReturn)$("salesReturnTab").click();else $("purchaseReturnTab").click();
  }
 }
 $("logoutBtn").onclick=async()=>{await db.auth.signOut();activeUser=null;$("workspace").hidden=true;$("loginPanel").hidden=false;$("logoutBtn").hidden=true;};
@@ -544,7 +546,12 @@ $("submitPurchaseReturnBtn").onclick=async()=>{
 $("refreshPurchaseReturnBtn").onclick=loadPurchaseReturns;
 $("purchaseReturnTab").onclick=async()=>{
  ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","employeeModule"].forEach(id=>$(id).hidden=true);
- $("purchaseReturnModule").hidden=false;await loadPaymentAccountOptions();$("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;
+ $("purchaseReturnModule").hidden=false;
+ const emp=!!employeeAccess,canAccounts=!emp||(employeeAccess.permissions?.accounts?.view===true&&employeeAccess.permissions?.accounts?.create===true);
+ $("purchaseReturnRefundAccount").closest("label").hidden=!canAccounts;
+ if(canAccounts)await loadPaymentAccountOptions();
+ $("submitPurchaseReturnBtn").disabled=emp&&employeeAccess.permissions?.purchase_returns?.create!==true;
+ $("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;
  ["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","customerDueTab","salesReturnTab"].forEach(id=>$(id).classList.remove("active"));
  $("purchaseReturnTab").classList.add("active");await loadPurchaseReturns();
 };
@@ -592,7 +599,14 @@ $("submitSalesReturnBtn").onclick=async()=>{
 $("refreshSalesReturnBtn").onclick=loadSalesReturns;
 $("salesReturnTab").onclick=async()=>{
  ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","employeeModule"].forEach(id=>$(id).hidden=true);
- $("salesReturnModule").hidden=false;$("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;
+ $("salesReturnModule").hidden=false;
+ const emp=!!employeeAccess,canAccounts=!emp||(employeeAccess.permissions?.accounts?.view===true&&employeeAccess.permissions?.accounts?.create===true);
+ $("salesReturnAccount").closest("label").hidden=!canAccounts;
+ $("salesReturnRefund").disabled=!canAccounts;
+ if(!canAccounts)$("salesReturnRefund").value="0";
+ if(canAccounts)await loadPaymentAccountOptions();
+ $("submitSalesReturnBtn").disabled=emp&&employeeAccess.permissions?.sales_returns?.create!==true;
+ $("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;
  ["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","customerDueTab"].forEach(id=>$(id).classList.remove("active"));
  $("salesReturnTab").classList.add("active");await loadSalesReturns();
 };
