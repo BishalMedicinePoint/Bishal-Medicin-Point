@@ -33,3 +33,62 @@ body[data-theme="dark"] .status.error{background:#482727;color:#ffdede}
 .bmp-invoice-head{text-align:center;border-bottom:1px solid #bbb;padding-bottom:10px;margin-bottom:12px}.bmp-invoice-head h2{margin:0 0 5px}.bmp-invoice-head p{margin:3px 0;font-size:12px}.bmp-invoice-lines{width:100%;border-collapse:collapse;margin:12px 0}.bmp-invoice-lines th,.bmp-invoice-lines td{border-bottom:1px solid #ddd;text-align:left;padding:7px}.bmp-invoice-totals{margin-left:auto;max-width:260px;text-align:right}.bmp-invoice-totals p{margin:4px 0}.bmp-invoice-footer{text-align:center;border-top:1px solid #bbb;padding-top:10px;margin-top:16px;font-size:12px}@media print{body.bmp-receipt-print #posReceiptPanel{position:absolute;left:0;top:0}}
 
 .photo-gallery-card{margin:0;padding:8px;border:1px solid #dbe5df;border-radius:10px;background:#fff;max-width:180px}.photo-gallery-card img{display:block;width:160px;height:130px;object-fit:cover;border-radius:6px}.photo-gallery-card figcaption{font-size:11px;overflow-wrap:anywhere;margin-top:6px}.photo-grid{display:flex;flex-wrap:wrap;gap:12px}
+
+
+/* PharmaCare-style vertical ERP sidebar */
+#workspace:not([hidden]){
+  display:grid;
+  grid-template-columns:250px minmax(0,1fr);
+  grid-template-areas:
+    "welcome welcome"
+    "sidebar content";
+  align-items:start;
+  gap:0 22px;
+}
+#workspace>.welcome{grid-area:welcome;min-width:0}
+#workspace>.tabs{
+  grid-area:sidebar;
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  gap:5px;
+  margin:0;
+  padding:12px;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:14px;
+  position:sticky;
+  top:14px;
+  max-height:calc(100vh - 28px);
+  overflow-y:auto;
+}
+#workspace>.tabs .tab{
+  display:block;
+  width:100%;
+  flex:0 0 auto;
+  text-align:left;
+  white-space:normal;
+  padding:10px 12px;
+  border:0;
+  border-radius:8px;
+  background:transparent;
+  color:var(--ink);
+  font-size:13px;
+}
+#workspace>.tabs .tab:hover{background:#edf6f0}
+#workspace>.tabs .tab.active{background:var(--deep);color:#fff}
+#workspace>section.panel{grid-column:2;min-width:0;margin:0 0 20px}
+#workspace>section.panel[hidden]{display:none!important}
+body[data-theme="dark"] #workspace>.tabs{background:#19251f;border-color:var(--line)}
+body[data-theme="dark"] #workspace>.tabs .tab{color:var(--ink)}
+body[data-theme="dark"] #workspace>.tabs .tab:hover{background:#293a31}
+body[data-theme="dark"] #workspace>.tabs .tab.active{background:var(--deep);color:#fff}
+@media(max-width:850px){
+  #workspace:not([hidden]){grid-template-columns:205px minmax(0,1fr);column-gap:12px}
+}
+@media(max-width:650px){
+  #workspace:not([hidden]){display:flex;flex-direction:column;gap:14px}
+  #workspace>.welcome,#workspace>.tabs,#workspace>section.panel{width:100%}
+  #workspace>.tabs{position:static;max-height:260px;overflow-y:auto}
+  #workspace>section.panel{margin:0 0 14px}
+}
