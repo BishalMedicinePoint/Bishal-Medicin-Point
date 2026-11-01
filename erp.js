@@ -94,7 +94,7 @@ async function verifyUser(user){
  if(user&&!isSuperAdmin){const {data,error}=await db.rpc("bmp_can_manage_settings");isManager=!error&&data===true;}
  if(!isSuperAdmin&&!isManager){
   const {data,error}=await db.rpc("bmp_get_my_erp_access");const access=data||{};
-  if(error||!access.authorized||!(access.permissions?.pos?.view===true||access.permissions?.purchases?.view===true||access.permissions?.stock?.view===true||access.permissions?.sales_returns?.view===true||access.permissions?.purchase_returns?.view===true||access.permissions?.customer_due?.view===true)){
+  if(error||!access.authorized||!(access.permissions?.pos?.view===true||access.permissions?.purchases?.view===true||access.permissions?.stock?.view===true||access.permissions?.sales_returns?.view===true||access.permissions?.purchase_returns?.view===true||access.permissions?.customer_due?.view===true||access.permissions?.supplier_due?.view===true)){
    await db.auth.signOut();activeUser=null;employeeAccess=null;$("workspace").hidden=true;$("loginPanel").hidden=false;
    say($("loginStatus"),"এই অ্যাকাউন্টে অনুমোদিত কোনো Employee Workspace View Permission নেই। Super Admin-এর কাছে প্রয়োজনীয় অনুমতি চাইুন।",true);return;
   }
@@ -120,15 +120,16 @@ async function verifyUser(user){
   const canSalesReturn=employeeAccess.permissions?.sales_returns?.view===true;
   const canPurchaseReturn=employeeAccess.permissions?.purchase_returns?.view===true;
   const canCustomerDue=employeeAccess.permissions?.customer_due?.view===true;
-  document.querySelectorAll(".tab").forEach(tab=>{tab.hidden=!(tab.id==="posTab"&&canPos)&&!(tab.id==="purchaseTab"&&canPurchase)&&!(tab.id==="stockTab"&&canStock)&&!(tab.id==="salesReturnTab"&&canSalesReturn)&&!(tab.id==="purchaseReturnTab"&&canPurchaseReturn)&&!(tab.id==="customerDueTab"&&canCustomerDue);});
+  const canSupplierDue=employeeAccess.permissions?.supplier_due?.view===true;
+  document.querySelectorAll(".tab").forEach(tab=>{tab.hidden=!(tab.id==="posTab"&&canPos)&&!(tab.id==="purchaseTab"&&canPurchase)&&!(tab.id==="stockTab"&&canStock)&&!(tab.id==="salesReturnTab"&&canSalesReturn)&&!(tab.id==="purchaseReturnTab"&&canPurchaseReturn)&&!(tab.id==="customerDueTab"&&canCustomerDue)&&!(tab.id==="supplierDueTab"&&canSupplierDue);});
   $("exportExcelBtn").hidden=true;$("exportPdfBtn").hidden=true;
   document.querySelector(".welcome .eyebrow").textContent="EMPLOYEE WORKSPACE";
-  const workspaces=[canPos?"POS":null,canPurchase?"Purchase":null,canStock?"Stock":null,canSalesReturn?"Sales Return":null,canPurchaseReturn?"Purchase Return":null,canCustomerDue?"Customer Due":null].filter(Boolean);
+  const workspaces=[canPos?"POS":null,canPurchase?"Purchase":null,canStock?"Stock":null,canSalesReturn?"Sales Return":null,canPurchaseReturn?"Purchase Return":null,canCustomerDue?"Customer Due":null,canSupplierDue?"Supplier Due":null].filter(Boolean);
   document.querySelector(".welcome h1").textContent=workspaces.join(" · ")+" Workspace";
   document.querySelector(".welcome p:not(.eyebrow)").textContent="শুধু আপনার নির্ধারিত Branch ও Permission অনুযায়ী কাজ করতে পারবেন";
   document.querySelector(".secure").textContent=(employeeAccess.full_name||"Employee")+" · Employee";
-  ["dashboardModule","customerModulePanel","customerFormPanel","medicineModule","batchModule","barcodeModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","employeeModule","attendanceModule","permissionsModule","payrollModule","accountsModule","dueOverviewModule","profitLossModule","financialReportsModule","stockReportsModule","employeeReportsModule","suppliersModule","onlineWebsiteModule","onlineOrdersModule","backupModule","activityLogModule","photoManagementModule","fingerprintModule"].forEach(id=>{const el=$(id);if(el)el.hidden=true;});
-  if(canPos)$("posTab").click();else if(canPurchase)$("purchaseTab").click();else if(canStock)$("stockTab").click();else if(canSalesReturn)$("salesReturnTab").click();else if(canPurchaseReturn)$("purchaseReturnTab").click();else $("customerDueTab").click();
+  ["dashboardModule","customerModulePanel","customerFormPanel","medicineModule","batchModule","barcodeModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","employeeModule","attendanceModule","permissionsModule","payrollModule","accountsModule","dueOverviewModule","profitLossModule","financialReportsModule","stockReportsModule","employeeReportsModule","suppliersModule","onlineWebsiteModule","onlineOrdersModule","backupModule","activityLogModule","photoManagementModule","fingerprintModule","supplierDueModule"].forEach(id=>{const el=$(id);if(el)el.hidden=true;});
+  if(canPos)$("posTab").click();else if(canPurchase)$("purchaseTab").click();else if(canStock)$("stockTab").click();else if(canSalesReturn)$("salesReturnTab").click();else if(canPurchaseReturn)$("purchaseReturnTab").click();else if(canCustomerDue)$("customerDueTab").click();else $("supplierDueTab").click();
  }
 }
 $("logoutBtn").onclick=async()=>{await db.auth.signOut();activeUser=null;$("workspace").hidden=true;$("loginPanel").hidden=false;$("logoutBtn").hidden=true;};
@@ -168,7 +169,7 @@ async function loadBatchMedicineOptions(selected=""){
  $("batchMedicine").innerHTML='<option value="">Medicine নির্বাচন করুন</option>'+(data||[]).map(m=>'<option value="'+safe(m.id)+'">'+safe(m.medicine_name)+(m.strength?" · "+safe(m.strength):"")+(m.brand?" · "+safe(m.brand):"")+'</option>').join("");
  $("batchMedicine").value=selected;
 }
-async function loadInventoryBranches(){const {data,error}=await db.from("erp_branches").select("id,branch_name,branch_code").eq("is_active",true).order("branch_name");if(error){say($("batchStatusText"),"Branch load হয়নি: "+error.message,true);say($("stockStatus"),"Branch load হয়নি: "+error.message,true);return;}for(const id of ["batchBranch","stockBranch","batchFormBranch","customerDueBranch","financialReportBranch","stockReportBranch","dueOverviewBranch","employeeBranch","employeeReportBranch","attendanceBranch","payrollBranch"]){const el=$(id);if(!el)continue;const old=el.value;el.innerHTML='<option value="">Branch নির্বাচন করুন</option>'+(data||[]).map(b=>'<option value="'+safe(b.id)+'">'+safe(b.branch_name)+' · '+safe(b.branch_code)+'</option>').join("");if(old&&(data||[]).some(b=>b.id===old))el.value=old;else if(data?.length===1)el.value=data[0].id;}}
+async function loadInventoryBranches(){const {data,error}=await db.from("erp_branches").select("id,branch_name,branch_code").eq("is_active",true).order("branch_name");if(error){say($("batchStatusText"),"Branch load হয়নি: "+error.message,true);say($("stockStatus"),"Branch load হয়নি: "+error.message,true);return;}for(const id of ["batchBranch","stockBranch","batchFormBranch","customerDueBranch","supplierDueBranch","financialReportBranch","stockReportBranch","dueOverviewBranch","employeeBranch","employeeReportBranch","attendanceBranch","payrollBranch"]){const el=$(id);if(!el)continue;const old=el.value;el.innerHTML='<option value="">Branch নির্বাচন করুন</option>'+(data||[]).map(b=>'<option value="'+safe(b.id)+'">'+safe(b.branch_name)+' · '+safe(b.branch_code)+'</option>').join("");if(old&&(data||[]).some(b=>b.id===old))el.value=old;else if(data?.length===1)el.value=data[0].id;}}
 async function loadBatches(){await loadInventoryBranches();
  const body=$("batchRows");if(!body)return;
  body.innerHTML='<tr><td colspan="10">Batch list লোড হচ্ছে...</td></tr>';
@@ -401,6 +402,48 @@ async function loadPaymentAccountOptions(){
  const options='<option value="">Account নির্বাচন করুন</option>'+(data||[]).map(a=>'<option value="'+safe(a.id)+'">'+safe(a.account_name)+' · '+safe(a.account_type)+'</option>').join("");
  ["customerPaymentAccount","supplierPaymentAccount","posPaymentAccount","purchasePaymentAccount","salesReturnAccount","payrollAccount","purchaseReturnRefundAccount"].forEach(id=>{const el=$(id);if(el){const old=el.value;el.innerHTML=options;el.value=old;}});
 }
+async function loadSupplierDue(){
+ await loadInventoryBranches();
+ const isEmployee=!!employeeAccess;
+ if(isEmployee){$("supplierDueBranch").value=employeeAccess.branch_id||"";$("supplierDueBranch").disabled=true;}else{$("supplierDueBranch").disabled=false;}
+ const branch=value("supplierDueBranch");
+ if(!branch){say($("supplierDueStatus"),"Supplier Due দেখার জন্য Branch নির্বাচন করুন।");return;}
+ const canViewAccounts=!isEmployee||(employeeAccess.permissions?.accounts?.view===true);
+ const canPay=!isEmployee||(employeeAccess.permissions?.supplier_due?.create===true&&employeeAccess.permissions?.accounts?.view===true&&employeeAccess.permissions?.accounts?.create===true);
+ $("supplierDuePaymentAccount").closest("label").hidden=!canViewAccounts;
+ $("recordSupplierDuePaymentBtn").disabled=!canPay;
+ if(!canPay)say($("supplierDueStatus"),"Payment করতে Supplier Due Create এবং Accounts View + Create Permission প্রয়োজন।");
+ const [inv,pay]=await Promise.all([
+  db.from("erp_purchase_invoices").select("id,purchase_number,purchase_date,total,paid,due,erp_suppliers(supplier_name,mobile)").eq("branch_id",branch).eq("status","received").gt("due",0).order("purchase_date",{ascending:false}).limit(500),
+  db.from("erp_supplier_payments").select("created_at,amount,payment_method,reference_number,erp_purchase_invoices!inner(purchase_number,branch_id),erp_suppliers(supplier_name)").eq("erp_purchase_invoices.branch_id",branch).order("created_at",{ascending:false}).limit(50)
+ ]);
+ if(inv.error){say($("supplierDueStatus"),"Due list load হয়নি: "+inv.error.message,true);return;}
+ const rows=inv.data||[];
+ $("supplierDueInvoiceCount").textContent=rows.length;
+ $("supplierDueTotal").textContent=purMoney(rows.reduce((sum,x)=>sum+Number(x.due||0),0));
+ $("supplierDueInvoice").innerHTML='<option value="">বকেয়া Purchase নির্বাচন করুন</option>'+rows.map(x=>'<option value="'+x.id+'" data-due="'+Number(x.due)+'">'+safe(x.purchase_number)+' · '+safe(x.erp_suppliers?.supplier_name||"")+' · Due ৳ '+purMoney(x.due)+'</option>').join("");
+ $("supplierDueRows").innerHTML=rows.length?rows.map(x=>'<tr><td>'+safe(x.purchase_number)+'</td><td>'+new Date(x.purchase_date).toLocaleString("en-BD")+'</td><td>'+safe(x.erp_suppliers?.supplier_name||"")+'</td><td>৳ '+purMoney(x.total)+'</td><td>৳ '+purMoney(x.paid)+'</td><td>৳ '+purMoney(x.due)+'</td></tr>').join(""):'<tr><td colspan="6">কোনো Supplier Purchase Due নেই।</td></tr>';
+ if(pay.error){$("supplierDuePaymentRows").innerHTML='<tr><td colspan="6">Payment history load হয়নি: '+safe(pay.error.message)+'</td></tr>';return;}
+ $("supplierDuePaymentRows").innerHTML=pay.data?.length?pay.data.map(x=>'<tr><td>'+new Date(x.created_at).toLocaleString("en-BD")+'</td><td>'+safe(x.erp_purchase_invoices?.purchase_number||"")+'</td><td>'+safe(x.erp_suppliers?.supplier_name||"")+'</td><td>৳ '+purMoney(x.amount)+'</td><td>'+safe(x.payment_method)+'</td><td>'+safe(x.reference_number||"")+'</td></tr>').join(""):'<tr><td colspan="6">এখনো Supplier Payment নেই।</td></tr>';
+ $("supplierDueSelected").textContent="0.00";
+ if(canViewAccounts)await loadPaymentAccountOptions();
+}
+$("supplierDueInvoice").onchange=()=>{const option=$("supplierDueInvoice").selectedOptions[0];$("supplierDueSelected").textContent=purMoney(option?.dataset.due||0);$("supplierDuePaymentAmount").max=option?.dataset.due||"";};
+$("recordSupplierDuePaymentBtn").onclick=async()=>{
+ const purchase=value("supplierDueInvoice"),amount=Number(value("supplierDuePaymentAmount")),due=Number($("supplierDueInvoice").selectedOptions[0]?.dataset.due||0);
+ const canPay=!employeeAccess||(employeeAccess.permissions?.supplier_due?.create===true&&employeeAccess.permissions?.accounts?.view===true&&employeeAccess.permissions?.accounts?.create===true);
+ if(!activeUser||!canPay||!purchase||!Number.isFinite(amount)||amount<=0||amount>due||!value("supplierDuePaymentAccount")){say($("supplierDueStatus"),"প্রয়োজনীয় Permission, Account ও Due-এর মধ্যে সঠিক Amount নিশ্চিত করুন।",true);return;}
+ if(!confirm("৳ "+purMoney(amount)+" Supplier Payment সংরক্ষণ করবেন?"))return;
+ $("recordSupplierDuePaymentBtn").disabled=true;say($("supplierDueStatus"),"Supplier Payment সংরক্ষণ হচ্ছে...");
+ const {data,error}=await db.rpc("bmp_record_supplier_payment",{p_purchase_id:purchase,p_amount:amount,p_payment_method:value("supplierDuePaymentMethod"),p_reference:value("supplierDuePaymentReference"),p_note:value("supplierDuePaymentNote"),p_account_id:value("supplierDuePaymentAccount")});
+ $("recordSupplierDuePaymentBtn").disabled=false;
+ if(error){say($("supplierDueStatus"),"Payment সংরক্ষণ হয়নি: "+error.message,true);return;}
+ $("supplierDuePaymentAmount").value="0";$("supplierDuePaymentReference").value="";$("supplierDuePaymentNote").value="";
+ say($("supplierDueStatus"),"Payment সফল: "+data.purchase_number+" · বাকি Due ৳ "+purMoney(data.due));
+ await loadSupplierDue();
+};
+$("refreshSupplierDueBtn").onclick=loadSupplierDue;$("supplierDueBranch").onchange=loadSupplierDue;
+
 async function loadCustomerDue(){
  await loadInventoryBranches();
  const isEmployee=!!employeeAccess;
@@ -441,6 +484,12 @@ $("recordCustomerPaymentBtn").onclick=async()=>{
  await loadCustomerDue();await loadPaymentAccountOptions();
 };
 $("refreshCustomerDueBtn").onclick=loadCustomerDue;$("customerDueBranch").onchange=loadCustomerDue;
+$("supplierDueTab").onclick=async()=>{
+ ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","employeeModule"].forEach(id=>$(id).hidden=true);
+ $("supplierDueModule").hidden=false;$("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;
+ document.querySelectorAll(".tab").forEach(tab=>tab.classList.remove("active"));
+ $("supplierDueTab").classList.add("active");await loadSupplierDue();
+};
 $("customerDueTab").onclick=async()=>{
  ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","salesReturnModule","employeeModule"].forEach(id=>$(id).hidden=true);
  $("customerDueModule").hidden=false;$("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;
