@@ -81,6 +81,9 @@
 <label>Overtime Payment / অতিরিক্ত ডিউটি<select id="employeeOvertime"><option value="true">ON</option><option value="false">OFF</option></select></label>
 <label>Leave Deduction / অতিরিক্ত ছুটি কর্তন<select id="employeeLeaveDeduction"><option value="true">ON</option><option value="false">OFF</option></select></label>
 <label>Unused Leave Bonus / অব্যবহৃত ছুটির বোনাস<select id="employeeUnusedLeaveBonus"><option value="true">ON</option><option value="false">OFF</option></select></label>
+<label>Duty Start Time<input id="employeeDutyStart" type="time" value="08:00" required></label><label>Duty End Time<input id="employeeDutyEnd" type="time" value="21:00" required></label>
+<label>Meal Break (Minutes)<input id="employeeMealBreakMinutes" type="number" min="0" max="240" value="40" required></label><label>Monthly Leave Days<input id="employeeMonthlyLeaveDays" type="number" min="0" max="31" value="2" required></label>
+<label>Salary Day Divisor<input id="employeeSalaryDayDivisor" type="number" min="1" max="31" step="0.01" value="30" required></label><label>Overtime Hourly Rate (৳)<input id="employeeOvertimeHourlyRate" type="number" min="0" step="0.01" placeholder="খালি রাখলে Basic Salary থেকে হিসাব"></label>
 <label class="full">Notes<textarea id="employeeNotes" rows="2" maxlength="1000"></textarea></label>
 <div class="full form-actions"><button class="btn" type="submit">Save Employee</button><button id="linkEmployeeAccountBtn" class="btn muted" type="button" disabled>Link Existing Login Account</button><button id="cancelEmployeeForm" class="btn muted" type="button">Cancel</button></div><p id="employeeLoginStatus" class="status full" role="status"></p></form></section></section>
 <section id="medicineModule" class="panel" hidden>
@@ -212,12 +215,12 @@
 <label>Paid Date<input id="payrollPaidDate" type="date"></label>
 <label>Payment Method<input id="payrollPaymentMethod" maxlength="80" placeholder="Cash / Bank / Mobile Banking"></label>
 <label class="full">Notes<textarea id="payrollNotes" rows="2" maxlength="1000"></textarea></label>
-<div class="full stock-card"><small>Net Salary</small><strong id="payrollNetPreview">৳ 0.00</strong></div>
+<div class="full stock-card"><small>Net Salary (Auto Attendance Calculation)</small><strong id="payrollNetPreview">৳ 0.00</strong><p id="payrollCalculationSummary" class="status">Employee ও মাস নির্বাচন করলে Late, Absence, Leave Bonus ও Overtime হিসাব দেখাবে।</p></div>
 <div class="full form-actions"><button id="savePayrollBtn" class="btn" type="submit">Save Payroll</button><button id="resetPayrollBtn" class="btn muted" type="button">Reset</button></div>
 </form><p id="payrollStatus" class="status" role="status"></p></div>
 <div class="toolbar"><input id="payrollSearch" type="search" placeholder="Employee ID বা নাম দিয়ে খুঁজুন"><input id="payrollFilterMonth" type="month"></div>
 <div class="stock-summary"><div class="stock-card"><small>Total Net Salary</small><strong id="payrollTotalNet">৳ 0.00</strong></div><div class="stock-card"><small>Paid</small><strong id="payrollPaidTotal">৳ 0.00</strong></div><div class="stock-card"><small>Pending</small><strong id="payrollPendingTotal">৳ 0.00</strong></div></div>
-<div class="table-wrap"><table><thead><tr><th>Month</th><th>Employee ID</th><th>Employee</th><th>Basic</th><th>Allowance</th><th>Bonus</th><th>Deduction</th><th>Net</th><th>Status</th><th>Paid Date</th></tr></thead><tbody id="payrollRows"><tr><td colspan="10">Payroll load হয়নি।</td></tr></tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>Month</th><th>Employee ID</th><th>Employee</th><th>Basic</th><th>Allowance</th><th>Bonus</th><th>Deduction</th><th>Late (min)</th><th>Absent</th><th>Leave</th><th>Unused Leave</th><th>Overtime (min)</th><th>Net</th><th>Status</th><th>Paid Date</th></tr></thead><tbody id="payrollRows"><tr><td colspan="10">Payroll load হয়নি।</td></tr></tbody></table></div>
 </section>
 <section id="accountsModule" class="panel" hidden>
 <div class="section-head"><div><h2>Accounts Management</h2><p>Cash, Bank ও Mobile Banking account এবং আয়-ব্যয়ের হিসাব পরিচালনা করুন।</p></div><button id="refreshAccountsBtn" class="btn muted" type="button">Refresh</button></div>
