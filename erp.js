@@ -479,7 +479,7 @@ async function linkEmployeeLoginAccount(){
  const {data,error}=await db.rpc("erp_link_employee_auth_account",{p_employee_id:employee,p_login_email:email});
  btn.disabled=false;
  if(error){say($("employeeLoginStatus"),"Account link হয়নি: "+error.message,true);return;}
- say($("employeeLoginStatus"),"Login account linked: "+(data?.[0]?.linked_email||email)+". Employee-এর ERP access এখনো চালু হয়নি; permission enforcement পরের ধাপ।");
+ say($("employeeLoginStatus"),"Login account linked: "+(data?.[0]?.linked_email||email)+". এখন Custom Permission Management-এ প্রয়োজনীয় permission দিন। Employee Portal-এর সীমিত self-service access চালু; অন্যান্য ERP module access এখনো RLS দিয়ে সম্পূর্ণ সুরক্ষিত নয়।");
  await loadEmployees();
 }
 $("linkEmployeeAccountBtn").onclick=linkEmployeeLoginAccount;
@@ -703,7 +703,7 @@ $("savePermissionsBtn").onclick=async()=>{
  const {error}=await db.from("erp_employee_permissions").upsert(rows,{onConflict:"employee_id,module_key"});
  $("savePermissionsBtn").disabled=false;
  if(error){say($("permissionStatus"),"Permission সংরক্ষণ হয়নি: "+error.message,true);return;}
- say($("permissionStatus"),"এই Employee-এর সব Module Permission সংরক্ষণ হয়েছে।");
+ say($("permissionStatus"),"এই Employee-এর ৩১টি Module-এর Permission সংরক্ষণ হয়েছে। Employee Portal-এর অনুমোদিত self-service feature-এ প্রযোজ্য; অন্য ERP module access এখনো চালু নয়।");
 };
 $("permissionsTab").onclick=async()=>{
  ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","employeeModule","attendanceModule"].forEach(id=>{const el=$(id);if(el)el.hidden=true;});
