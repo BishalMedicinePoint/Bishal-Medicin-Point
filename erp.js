@@ -93,7 +93,6 @@ async function verifyUser(user){
  let isManager=false;employeeAccess=null;isManagerUser=false;managerBranchId=null;
  if(user&&!isSuperAdmin){const {data,error}=await db.rpc("bmp_can_manage_settings");isManager=!error&&data===true;}
  if(isManager){const {data,error}=await db.rpc("bmp_get_my_erp_access");if(error||!data?.authorized||data.system_role!=="manager"||!data.branch_id){await db.auth.signOut();say($("loginStatus"),"Manager-এর সক্রিয় Employee Profile বা Branch পাওয়া যায়নি।",true);return;}managerBranchId=data.branch_id;isManagerUser=true;}
- if(isManager){const {data,error}=await db.rpc("bmp_get_my_erp_access");if(error||!data?.authorized||data.system_role!=="manager"||!data.branch_id){await db.auth.signOut();say($("loginStatus"),"Manager-এর সক্রিয় Employee Profile বা Branch পাওয়া যায়নি।",true);return;}managerBranchId=data.branch_id;isManagerUser=true;}
  if(!isSuperAdmin&&!isManager){
   const {data,error}=await db.rpc("bmp_get_my_erp_access");const access=data||{};
   if(error||!access.authorized||!(access.permissions?.pos?.view===true||access.permissions?.purchases?.view===true||access.permissions?.stock?.view===true||access.permissions?.sales_returns?.view===true||access.permissions?.purchase_returns?.view===true||access.permissions?.customer_due?.view===true||access.permissions?.supplier_due?.view===true)){
