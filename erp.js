@@ -90,8 +90,9 @@ $("loginForm").onsubmit=async e=>{
 };
 async function verifyUser(user){
  const isSuperAdmin=!!user&&user.id===ADMIN_UID&&String(user.email).toLowerCase()===ADMIN_EMAIL;
- let isManager=false;employeeAccess=null;isManagerUser=false;managerBranchId=null;
+ let isManager=false;employeeAccess=null;isManagerUser=false;managerBranchId=null;isManagerUser=false;managerBranchId=null;
  if(user&&!isSuperAdmin){const {data,error}=await db.rpc("bmp_can_manage_settings");isManager=!error&&data===true;}
+ if(isManager){const {data,error}=await db.rpc("bmp_get_my_erp_access");if(error||!data?.authorized||data.system_role!=="manager"||!data.branch_id){await db.auth.signOut();say($("loginStatus"),"Manager-এর সক্রিয় Employee Profile বা Branch পাওয়া যায়নি।",true);return;}managerBranchId=data.branch_id;isManagerUser=true;}
  if(isManager){const {data,error}=await db.rpc("bmp_get_my_erp_access");if(error||!data?.authorized||data.system_role!=="manager"||!data.branch_id){await db.auth.signOut();say($("loginStatus"),"Manager-এর সক্রিয় Employee Profile বা Branch পাওয়া যায়নি।",true);return;}managerBranchId=data.branch_id;isManagerUser=true;}
  if(!isSuperAdmin&&!isManager){
   const {data,error}=await db.rpc("bmp_get_my_erp_access");const access=data||{};
