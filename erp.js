@@ -169,7 +169,7 @@ async function loadBatchMedicineOptions(selected=""){
  $("batchMedicine").innerHTML='<option value="">Medicine নির্বাচন করুন</option>'+(data||[]).map(m=>'<option value="'+safe(m.id)+'">'+safe(m.medicine_name)+(m.strength?" · "+safe(m.strength):"")+(m.brand?" · "+safe(m.brand):"")+'</option>').join("");
  $("batchMedicine").value=selected;
 }
-async function loadInventoryBranches(){const {data,error}=await db.from("erp_branches").select("id,branch_name,branch_code").eq("is_active",true).order("branch_name");if(error){say($("batchStatusText"),"Branch load হয়নি: "+error.message,true);say($("stockStatus"),"Branch load হয়নি: "+error.message,true);return;}for(const id of ["batchBranch","stockBranch","batchFormBranch","customerDueBranch","supplierDueBranch","financialReportBranch","stockReportBranch","dueOverviewBranch","employeeBranch","employeeReportBranch","attendanceBranch","payrollBranch"]){const el=$(id);if(!el)continue;const old=el.value;el.innerHTML='<option value="">Branch নির্বাচন করুন</option>'+(data||[]).map(b=>'<option value="'+safe(b.id)+'">'+safe(b.branch_name)+' · '+safe(b.branch_code)+'</option>').join("");if(old&&(data||[]).some(b=>b.id===old))el.value=old;else if(data?.length===1)el.value=data[0].id;}}
+async function loadInventoryBranches(){const {data,error}=await db.from("erp_branches").select("id,branch_name,branch_code").eq("is_active",true).order("branch_name");if(error){say($("batchStatusText"),"Branch load হয়নি: "+error.message,true);say($("stockStatus"),"Branch load হয়নি: "+error.message,true);return;}for(const id of ["batchBranch","stockBranch","batchFormBranch","customerDueBranch","supplierDueBranch","financialReportBranch","stockReportBranch","dueOverviewBranch","employeeBranch","employeeReportBranch","attendanceBranch","fingerprintDeviceBranch","payrollBranch"]){const el=$(id);if(!el)continue;const old=el.value;el.innerHTML='<option value="">Branch নির্বাচন করুন</option>'+(data||[]).map(b=>'<option value="'+safe(b.id)+'">'+safe(b.branch_name)+' · '+safe(b.branch_code)+'</option>').join("");if(old&&(data||[]).some(b=>b.id===old))el.value=old;else if(data?.length===1)el.value=data[0].id;}}
 async function loadBatches(){await loadInventoryBranches();
  const body=$("batchRows");if(!body)return;
  body.innerHTML='<tr><td colspan="10">Batch list লোড হচ্ছে...</td></tr>';
@@ -682,19 +682,25 @@ function attendanceMonthBounds(){
  return {start:m+"-01",end:new Date(y,mo,1).toISOString().slice(0,10)};
 }
 async function loadFingerprintSetting(){
- const {data,error}=await db.from("erp_attendance_settings").select("fingerprint_enabled").eq("id",true).maybeSingle();
+ await loadInventoryBranches();
+ const {data,error}=await db.from("erp_attendance_settings").select("fingerprint_enabled,fingerprint_device_name,fingerprint_model,fingerprint_connection,fingerprint_serial,fingerprint_branch_id").eq("id",true).maybeSingle();
  if(error){say($("fingerprintModeStatus"),"Fingerprint setting load হয়নি: "+error.message,true);return;}
  $("fingerprintEnabled").checked=!!data?.fingerprint_enabled;
- $("fingerprintModeStatus").textContent=data?.fingerprint_enabled?"Fingerprint System ON — মেশিন এখনো সংযুক্ত নয়; Manual Attendance চালু আছে।":"Fingerprint System OFF — Manual Attendance চালু আছে।";
+ $("fingerprintDeviceName").value=data?.fingerprint_device_name||"";
+ $("fingerprintDeviceModel").value=data?.fingerprint_model||"";
+ $("fingerprintConnection").value=data?.fingerprint_connection||"";
+ $("fingerprintSerial").value=data?.fingerprint_serial||"";
+ $("fingerprintDeviceBranch").value=data?.fingerprint_branch_id||"";
+ $("fingerprintModeStatus").textContent=data?.fingerprint_enabled?"Integration Enabled — device configuration saved; actual scan awaits supported hardware/API.":"Fingerprint OFF — Manual Attendance চালু আছে।";
 }
 $("saveFingerprintSettingBtn").onclick=async()=>{
  if(!activeUser||activeUser.id!==ADMIN_UID){say($("fingerprintModeStatus"),"শুধু Super Admin এই সেটিং পরিবর্তন করতে পারবেন।",true);return;}
  const enabled=$("fingerprintEnabled").checked;
  $("saveFingerprintSettingBtn").disabled=true;
- const {error}=await db.from("erp_attendance_settings").upsert({id:true,fingerprint_enabled:enabled,updated_by:activeUser.id},{onConflict:"id"});
+ const {error}=await db.from("erp_attendance_settings").upsert({id:true,fingerprint_enabled:enabled,fingerprint_device_name:value("fingerprintDeviceName").trim()||null,fingerprint_model:value("fingerprintDeviceModel").trim()||null,fingerprint_connection:value("fingerprintConnection")||null,fingerprint_serial:value("fingerprintSerial").trim()||null,fingerprint_branch_id:value("fingerprintDeviceBranch")||null,updated_by:activeUser.id},{onConflict:"id"});
  $("saveFingerprintSettingBtn").disabled=false;
  if(error){say($("fingerprintModeStatus"),"সেটিং সংরক্ষণ হয়নি: "+error.message,true);return;}
- $("fingerprintModeStatus").textContent=enabled?"Fingerprint System ON — মেশিন এখনো সংযুক্ত নয়; Manual Attendance চালু আছে।":"Fingerprint System OFF — Manual Attendance চালু আছে।";
+ $("fingerprintModeStatus").textContent=enabled?"Integration Enabled — device settings saved; actual scan starts after supported device/API connection.":"Fingerprint OFF — Manual Attendance চালু আছে।";
 };
 async function loadAttendance(){
  if(!activeUser||activeUser.id!==ADMIN_UID)return;await loadInventoryBranches();const branch=value("attendanceBranch");if(!branch){say($("attendanceStatusText"),"Attendance-এর জন্য Branch নির্বাচন করুন।");return;}
@@ -704,7 +710,7 @@ async function loadAttendance(){
  ]);
  if(emps.error){say($("attendanceStatusText"),"Employee load হয়নি: "+emps.error.message,true);return;}
  $("attendanceEmployee").innerHTML='<option value="">Employee নির্বাচন করুন</option>'+(emps.data||[]).map(e=>'<option value="'+e.id+'">'+safe(e.employee_code)+' · '+safe(e.full_name)+'</option>').join("");
- const {data,error}=await db.from("erp_attendance").select("id,employee_id,attendance_date,attendance_status,check_in,check_out,notes,erp_employees(employee_code,full_name)").eq("branch_id",branch).gte("attendance_date",month.start).lt("attendance_date",month.end).order("attendance_date",{ascending:false}).limit(2000);
+ const {data,error}=await db.from("erp_attendance").select("id,employee_id,attendance_date,attendance_status,check_in,check_out,check_in_method,check_out_method,notes,erp_employees(employee_code,full_name)").eq("branch_id",branch).gte("attendance_date",month.start).lt("attendance_date",month.end).order("attendance_date",{ascending:false}).limit(2000);
  if(error){say($("attendanceStatusText"),"Attendance load হয়নি: "+error.message,true);return;}
  attendanceCache=data||[];renderAttendance();
 }
@@ -714,7 +720,7 @@ function renderAttendance(){
  const counts={present:0,absent:0,leave:0,holiday:0};
  attendanceCache.forEach(r=>counts[r.attendance_status]=(counts[r.attendance_status]||0)+1);
  $("attendancePresentCount").textContent=counts.present;$("attendanceAbsentCount").textContent=counts.absent;$("attendanceLeaveCount").textContent=counts.leave;$("attendanceHolidayCount").textContent=counts.holiday;
- $("attendanceRows").innerHTML=rows.map(r=>'<tr><td>'+safe(r.attendance_date)+'</td><td>'+safe(r.erp_employees?.employee_code||"")+'</td><td>'+safe(r.erp_employees?.full_name||"")+'</td><td>'+safe(r.attendance_status)+'</td><td>'+safe(r.check_in||"—")+'</td><td>'+safe(r.check_out||"—")+'</td><td>'+safe(r.notes||"")+'</td></tr>').join("")||'<tr><td colspan="7">এই মাসে কোনো Attendance পাওয়া যায়নি।</td></tr>';
+ $("attendanceRows").innerHTML=rows.map(r=>'<tr><td>'+safe(r.attendance_date)+'</td><td>'+safe(r.erp_employees?.employee_code||"")+'</td><td>'+safe(r.erp_employees?.full_name||"")+'</td><td>'+safe(r.attendance_status)+'</td><td>'+safe(r.check_in||"—")+'</td><td>'+safe(r.check_out||"—")+'</td><td>'+safe(r.check_in_method||"manual")+'</td><td>'+safe(r.check_out_method||"manual")+'</td><td>'+safe(r.notes||"")+'</td></tr>').join("")||'<tr><td colspan="9">এই মাসে কোনো Attendance পাওয়া যায়নি।</td></tr>';
 }
 function resetAttendanceForm(){
  $("attendanceEmployee").value="";$("attendanceStatus").value="present";$("attendanceCheckIn").value="";$("attendanceCheckOut").value="";$("attendanceNotes").value="";
@@ -724,7 +730,7 @@ $("saveAttendanceBtn").onclick=async()=>{
  const employee=value("attendanceEmployee"),date=value("attendanceDate"),status=value("attendanceStatus"),cin=value("attendanceCheckIn")||null,cout=value("attendanceCheckOut")||null,notes=value("attendanceNotes").trim()||null;
  if(!employee||!date){say($("attendanceStatusText"),"তারিখ ও Employee নির্বাচন করুন।",true);return;}
  if(cin&&cout&&cout<cin){say($("attendanceStatusText"),"Check-out সময় Check-in-এর আগে হতে পারবে না।",true);return;}
- const selectedEmployee=(await db.from("erp_employees").select("branch_id").eq("id",employee).single()).data;if(!selectedEmployee||selectedEmployee.branch_id!==value("attendanceBranch")){say($("attendanceStatusText"),"Employee নির্বাচিত Branch-এর নয়।",true);return;}const row={branch_id:value("attendanceBranch"),employee_id:employee,attendance_date:date,attendance_status:status,check_in:status==="present"?cin:null,check_out:status==="present"?cout:null,notes,created_by:activeUser.id};
+ const selectedEmployee=(await db.from("erp_employees").select("branch_id").eq("id",employee).single()).data;if(!selectedEmployee||selectedEmployee.branch_id!==value("attendanceBranch")){say($("attendanceStatusText"),"Employee নির্বাচিত Branch-এর নয়।",true);return;}const row={branch_id:value("attendanceBranch"),employee_id:employee,attendance_date:date,attendance_status:status,check_in:status==="present"?cin:null,check_out:status==="present"?cout:null,check_in_method:"manual",check_out_method:"manual",notes,created_by:activeUser.id};
  $("saveAttendanceBtn").disabled=true;
  const {error}=await db.from("erp_attendance").upsert(row,{onConflict:"employee_id,attendance_date"});
  $("saveAttendanceBtn").disabled=false;
