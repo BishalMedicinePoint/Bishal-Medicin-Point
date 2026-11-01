@@ -710,7 +710,7 @@ async function loadAttendance(){
  ]);
  if(emps.error){say($("attendanceStatusText"),"Employee load হয়নি: "+emps.error.message,true);return;}
  $("attendanceEmployee").innerHTML='<option value="">Employee নির্বাচন করুন</option>'+(emps.data||[]).map(e=>'<option value="'+e.id+'">'+safe(e.employee_code)+' · '+safe(e.full_name)+'</option>').join("");
- const {data,error}=await db.from("erp_attendance").select("id,employee_id,attendance_date,attendance_status,check_in,check_out,check_in_method,check_out_method,notes,erp_employees(employee_code,full_name)").eq("branch_id",branch).gte("attendance_date",month.start).lt("attendance_date",month.end).order("attendance_date",{ascending:false}).limit(2000);
+ const {data,error}=await db.from("erp_attendance").select("id,employee_id,attendance_date,attendance_status,check_in,meal_break_out,meal_break_in,check_out,check_in_method,meal_break_out_method,meal_break_in_method,check_out_method,notes,erp_employees(employee_code,full_name)").eq("branch_id",branch).gte("attendance_date",month.start).lt("attendance_date",month.end).order("attendance_date",{ascending:false}).limit(2000);
  if(error){say($("attendanceStatusText"),"Attendance load হয়নি: "+error.message,true);return;}
  attendanceCache=data||[];renderAttendance();
 }
@@ -720,17 +720,20 @@ function renderAttendance(){
  const counts={present:0,absent:0,leave:0,holiday:0};
  attendanceCache.forEach(r=>counts[r.attendance_status]=(counts[r.attendance_status]||0)+1);
  $("attendancePresentCount").textContent=counts.present;$("attendanceAbsentCount").textContent=counts.absent;$("attendanceLeaveCount").textContent=counts.leave;$("attendanceHolidayCount").textContent=counts.holiday;
- $("attendanceRows").innerHTML=rows.map(r=>'<tr><td>'+safe(r.attendance_date)+'</td><td>'+safe(r.erp_employees?.employee_code||"")+'</td><td>'+safe(r.erp_employees?.full_name||"")+'</td><td>'+safe(r.attendance_status)+'</td><td>'+safe(r.check_in||"—")+'</td><td>'+safe(r.check_out||"—")+'</td><td>'+safe(r.check_in_method||"manual")+'</td><td>'+safe(r.check_out_method||"manual")+'</td><td>'+safe(r.notes||"")+'</td></tr>').join("")||'<tr><td colspan="9">এই মাসে কোনো Attendance পাওয়া যায়নি।</td></tr>';
+ $("attendanceRows").innerHTML=rows.map(r=>'<tr><td>'+safe(r.attendance_date)+'</td><td>'+safe(r.erp_employees?.employee_code||"")+'</td><td>'+safe(r.erp_employees?.full_name||"")+'</td><td>'+safe(r.attendance_status)+'</td><td>'+safe(r.check_in||"—")+'</td><td>'+safe(r.meal_break_out||"—")+'</td><td>'+safe(r.meal_break_in||"—")+'</td><td>'+safe(r.check_out||"—")+'</td><td>'+safe(r.check_in_method||"manual")+'</td><td>'+safe(r.meal_break_out_method||"manual")+'</td><td>'+safe(r.meal_break_in_method||"manual")+'</td><td>'+safe(r.check_out_method||"manual")+'</td><td>'+safe(r.notes||"")+'</td></tr>').join("")||'<tr><td colspan="13">এই মাসে কোনো Attendance পাওয়া যায়নি।</td></tr>';
 }
 function resetAttendanceForm(){
- $("attendanceEmployee").value="";$("attendanceStatus").value="present";$("attendanceCheckIn").value="";$("attendanceCheckOut").value="";$("attendanceNotes").value="";
+ $("attendanceEmployee").value="";$("attendanceStatus").value="present";$("attendanceCheckIn").value="";$("attendanceMealOut").value="";$("attendanceMealIn").value="";$("attendanceCheckOut").value="";$("attendanceNotes").value="";
 }
 $("saveAttendanceBtn").onclick=async()=>{
  if(!activeUser||activeUser.id!==ADMIN_UID){say($("attendanceStatusText"),"শুধু Super Admin Attendance সংরক্ষণ করতে পারবেন।",true);return;}
- const employee=value("attendanceEmployee"),date=value("attendanceDate"),status=value("attendanceStatus"),cin=value("attendanceCheckIn")||null,cout=value("attendanceCheckOut")||null,notes=value("attendanceNotes").trim()||null;
+ const employee=value("attendanceEmployee"),date=value("attendanceDate"),status=value("attendanceStatus"),cin=value("attendanceCheckIn")||null,mealOut=value("attendanceMealOut")||null,mealIn=value("attendanceMealIn")||null,cout=value("attendanceCheckOut")||null,notes=value("attendanceNotes").trim()||null;
  if(!employee||!date){say($("attendanceStatusText"),"তারিখ ও Employee নির্বাচন করুন।",true);return;}
+ if(cin&&mealOut&&mealOut<cin){say($("attendanceStatusText"),"খেতে যাওয়ার সময় Check-in-এর আগে হতে পারবে না।",true);return;}
+ if(mealOut&&mealIn&&mealIn<mealOut){say($("attendanceStatusText"),"খেয়ে ফেরার সময় খেতে যাওয়ার আগের হতে পারবে না।",true);return;}
+ if(mealIn&&cout&&cout<mealIn){say($("attendanceStatusText"),"দোকান ছাড়ার সময় খেয়ে ফেরার আগের হতে পারবে না।",true);return;}
  if(cin&&cout&&cout<cin){say($("attendanceStatusText"),"Check-out সময় Check-in-এর আগে হতে পারবে না।",true);return;}
- const selectedEmployee=(await db.from("erp_employees").select("branch_id").eq("id",employee).single()).data;if(!selectedEmployee||selectedEmployee.branch_id!==value("attendanceBranch")){say($("attendanceStatusText"),"Employee নির্বাচিত Branch-এর নয়।",true);return;}const row={branch_id:value("attendanceBranch"),employee_id:employee,attendance_date:date,attendance_status:status,check_in:status==="present"?cin:null,check_out:status==="present"?cout:null,check_in_method:"manual",check_out_method:"manual",notes,created_by:activeUser.id};
+ const selectedEmployee=(await db.from("erp_employees").select("branch_id").eq("id",employee).single()).data;if(!selectedEmployee||selectedEmployee.branch_id!==value("attendanceBranch")){say($("attendanceStatusText"),"Employee নির্বাচিত Branch-এর নয়।",true);return;}const row={branch_id:value("attendanceBranch"),employee_id:employee,attendance_date:date,attendance_status:status,check_in:status==="present"?cin:null,meal_break_out:status==="present"?mealOut:null,meal_break_in:status==="present"?mealIn:null,check_out:status==="present"?cout:null,check_in_method:"manual",meal_break_out_method:"manual",meal_break_in_method:"manual",check_out_method:"manual",notes,created_by:activeUser.id};
  $("saveAttendanceBtn").disabled=true;
  const {error}=await db.from("erp_attendance").upsert(row,{onConflict:"employee_id,attendance_date"});
  $("saveAttendanceBtn").disabled=false;
