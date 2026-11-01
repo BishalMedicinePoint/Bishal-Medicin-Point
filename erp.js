@@ -598,7 +598,7 @@ $("submitSalesReturnBtn").onclick=async()=>{
 };
 $("refreshSalesReturnBtn").onclick=loadSalesReturns;
 $("salesReturnTab").onclick=async()=>{
- ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","employeeModule"].forEach(id=>$(id).hidden=true);
+ ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","purchaseReturnModule","employeeModule"].forEach(id=>$(id).hidden=true);
  $("salesReturnModule").hidden=false;
  const emp=!!employeeAccess,canAccounts=!emp||(employeeAccess.permissions?.accounts?.view===true&&employeeAccess.permissions?.accounts?.create===true);
  $("salesReturnAccount").closest("label").hidden=!canAccounts;
