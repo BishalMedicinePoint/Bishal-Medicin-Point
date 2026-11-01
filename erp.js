@@ -2,7 +2,7 @@
 const $ = id => document.getElementById(id);
 const ADMIN_UID = "7a3166f2-e4bb-42b8-a649-033dd2d02090";
 const ADMIN_EMAIL = "mdmeharajh9@gmail.com";
-let db = null, activeUser = null, customers = [], photoPath = null, employeeAccess = null;
+let db = null, activeUser = null, customers = [], photoPath = null, employeeAccess = null, isManagerUser = false, managerBranchId = null;
 const say = (el, message, error=false) => { el.textContent=message; el.classList.toggle("error",error); };
 const value = id => $(id).value.trim();
 const money = n => Number(n || 0).toLocaleString("en-BD",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -90,8 +90,9 @@ $("loginForm").onsubmit=async e=>{
 };
 async function verifyUser(user){
  const isSuperAdmin=!!user&&user.id===ADMIN_UID&&String(user.email).toLowerCase()===ADMIN_EMAIL;
- let isManager=false;employeeAccess=null;
+ let isManager=false;employeeAccess=null;isManagerUser=false;managerBranchId=null;
  if(user&&!isSuperAdmin){const {data,error}=await db.rpc("bmp_can_manage_settings");isManager=!error&&data===true;}
+ if(isManager){const {data,error}=await db.rpc("bmp_get_my_erp_access");if(error||!data?.authorized||data.system_role!=="manager"||!data.branch_id){await db.auth.signOut();say($("loginStatus"),"Manager-এর সক্রিয় Employee Profile বা Branch পাওয়া যায়নি।",true);return;}managerBranchId=data.branch_id;isManagerUser=true;}
  if(!isSuperAdmin&&!isManager){
   const {data,error}=await db.rpc("bmp_get_my_erp_access");const access=data||{};
   if(error||!access.authorized||!(access.permissions?.pos?.view===true||access.permissions?.purchases?.view===true||access.permissions?.stock?.view===true||access.permissions?.sales_returns?.view===true||access.permissions?.purchase_returns?.view===true||access.permissions?.customer_due?.view===true||access.permissions?.supplier_due?.view===true)){
@@ -104,12 +105,12 @@ async function verifyUser(user){
  document.querySelectorAll(".tab").forEach(tab=>{tab.hidden=false;});
  $("exportExcelBtn").hidden=false;$("exportPdfBtn").hidden=false;
  if(isManager){
-  const allowed=new Set(["shopSettingsTab","invoiceSettingsTab","branchesTab"]);document.querySelectorAll(".tab").forEach(tab=>{tab.hidden=!allowed.has(tab.id);});
+  const allowed=new Set(["shopSettingsTab","invoiceSettingsTab","branchesTab","employeesTab","payrollTab"]);document.querySelectorAll(".tab").forEach(tab=>{tab.hidden=!allowed.has(tab.id);});
   $("exportExcelBtn").hidden=true;$("exportPdfBtn").hidden=true;
-  document.querySelector(".welcome .eyebrow").textContent="MANAGER SETTINGS ACCESS";document.querySelector(".welcome h1").textContent="Settings Workspace";
-  document.querySelector(".welcome p:not(.eyebrow)").textContent="আপনার অনুমতি অনুযায়ী Shop, Invoice ও Branch Settings";document.querySelector(".secure").textContent="Manager · Settings only";
-  ["dashboardModule","customerModulePanel","customerFormPanel","medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","employeeModule","attendanceModule","permissionsModule","payrollModule","accountsModule","dueOverviewModule","profitLossModule","financialReportsModule","stockReportsModule","employeeReportsModule","suppliersModule","onlineWebsiteModule","onlineOrdersModule","backupModule","activityLogModule","photoManagementModule","fingerprintModule"].forEach(id=>{const el=$(id);if(el)el.hidden=true;});
-  $("shopSettingsTab").click();
+  document.querySelector(".welcome .eyebrow").textContent="MANAGER WORKSPACE";document.querySelector(".welcome h1").textContent="Employee & Payroll Settings";
+  document.querySelector(".welcome p:not(.eyebrow)").textContent="নিজের Branch-এর কর্মচারীর Duty ও Salary Rules; Paid Payroll শুধু Super Admin করবেন";document.querySelector(".secure").textContent="Manager · Assigned Branch";
+  ["dashboardModule","customerModulePanel","customerFormPanel","medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","attendanceModule","permissionsModule","accountsModule","dueOverviewModule","profitLossModule","financialReportsModule","stockReportsModule","employeeReportsModule","suppliersModule","onlineWebsiteModule","onlineOrdersModule","backupModule","activityLogModule","photoManagementModule","fingerprintModule"].forEach(id=>{const el=$(id);if(el)el.hidden=true;});
+  $("newEmployeeBtn").hidden=true;$("employeesTab").click();
  }else if(isSuperAdmin){
   document.querySelector(".welcome .eyebrow").textContent="MANAGEMENT WORKSPACE";document.querySelector(".welcome h1").textContent="Pharmacy ERP";
   document.querySelector(".welcome p:not(.eyebrow)").textContent="প্রথম ধাপ: Customer Management";document.querySelector(".secure").textContent="Super Admin access";$("dashboardTab").click();
