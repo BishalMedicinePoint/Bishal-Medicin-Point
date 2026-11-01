@@ -1110,17 +1110,18 @@ document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="dashboardTab")t.addEven
  }
  $("exportExcelBtn").onclick=()=>{
   const module=activeModule();if(!module){alert("Export করার মতো কোনো Module পাওয়া যায়নি।");return;}
+  if(!window.XLSX){alert("Excel export library load হয়নি। Internet connection পরীক্ষা করে আবার চেষ্টা করুন।");return;}
   const tables=[...module.querySelectorAll("table")].filter(t=>t.querySelector("tbody tr")&&!t.closest("[hidden]"));
   if(!tables.length){alert("এই Module-এ Export করার মতো Table নেই।");return;}
-  const lines=[];
+  const wb=XLSX.utils.book_new();
   tables.forEach((table,index)=>{
-   if(index)lines.push("");
    const title=module.querySelector("h2")?.textContent||"Bishal Medicine Point ERP";
-   lines.push(csvCell(title));
-   [...table.querySelectorAll("tr")].forEach(tr=>lines.push([...tr.querySelectorAll("th,td")].map(cell=>csvCell(cell.innerText)).join(",")));
+   const rows=[[title],[],...([...table.querySelectorAll("tr")].map(tr=>[...tr.querySelectorAll("th,td")].map(cell=>cell.innerText.trim())))];
+   const ws=XLSX.utils.aoa_to_sheet(rows);
+   const sheetName=("Report "+(index+1)).slice(0,31);
+   XLSX.utils.book_append_sheet(wb,ws,sheetName);
   });
-  const blob=new Blob(["\uFEFF"+lines.join("\r\n")],{type:"text/csv;charset=utf-8;"});
-  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="bishal-medicine-point-erp-"+today()+".csv";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+  XLSX.writeFile(wb,"bishal-medicine-point-erp-"+today()+".xlsx");
  };
  $("exportPdfBtn").onclick=()=>{
   const module=activeModule();if(!module){alert("PDF তৈরি করার মতো Module পাওয়া যায়নি।");return;}
