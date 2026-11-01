@@ -505,7 +505,7 @@ let employees=[];
 function resetEmployeeForm(){
  $("employeeForm").reset();$("employeeRecordId").value="";$("employeeCode").value="";
  $("employeeJoiningDate").value=today();$("employeeEmploymentStatus").value="active";
- $("employeeSalaryDeduction").value="true";$("employeeOvertime").value="true";$("employeeLeaveDeduction").value="true";$("employeeUnusedLeaveBonus").value="true";
+ $("employeeSalaryDeduction").value="true";$("employeeOvertime").value="true";$("employeeLeaveDeduction").value="true";$("employeeUnusedLeaveBonus").value="true";$("employeeDutyStart").value="08:00";$("employeeDutyEnd").value="21:00";$("employeeMealBreakMinutes").value="40";$("employeeMonthlyLeaveDays").value="2";$("employeeSalaryDayDivisor").value="30";$("employeeOvertimeHourlyRate").value="";
  $("employeeFormTitle").textContent="Add Employee";
 }
 function openEmployeeForm(row=null){
