@@ -521,7 +521,8 @@ $("submitPurchaseReturnBtn").onclick=async()=>{
  const item=purchaseReturnOptions.find(x=>x.id===value("purchaseReturnItem"));
  const qty=Math.floor(Number(value("purchaseReturnQty"))||0),reason=value("purchaseReturnReason").trim();
  if(!activeUser||activeUser.id!==ADMIN_UID||!item||qty<1||qty>item.remaining||qty>item.available||!reason){say($("purchaseReturnStatus"),"Purchase item, Available Quantity ও Return Reason সঠিকভাবে দিন।",true);return;}
- const refundAccount=value("purchaseReturnRefundAccount")||null;\n if(!confirm("Supplier-কে Purchase Return করবেন? Qty: "+qty+" · Value ৳ "+purMoney(qty*Number(item.purchase_price))+" · Stock কমবে; প্রয়োজন হলে supplier refund account-এ যোগ হবে।"))return;
+ const refundAccount=value("purchaseReturnRefundAccount")||null;
+ if(!confirm("Supplier-কে Purchase Return করবেন? Qty: "+qty+" · Value ৳ "+purMoney(qty*Number(item.purchase_price))+" · Stock কমবে; প্রয়োজন হলে supplier refund account-এ যোগ হবে।"))return;
  $("submitPurchaseReturnBtn").disabled=true;
  const {data,error}=await db.rpc("bmp_create_purchase_return",{p_purchase_item_id:item.id,p_quantity:qty,p_reason:reason,p_refund_account_id:refundAccount});
  $("submitPurchaseReturnBtn").disabled=false;
