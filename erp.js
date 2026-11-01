@@ -90,7 +90,7 @@ $("loginForm").onsubmit=async e=>{
 };
 async function verifyUser(user){
  const isSuperAdmin=!!user&&user.id===ADMIN_UID&&String(user.email).toLowerCase()===ADMIN_EMAIL;
- let isManager=false;employeeAccess=null;isManagerUser=false;managerBranchId=null;isManagerUser=false;managerBranchId=null;
+ let isManager=false;employeeAccess=null;isManagerUser=false;managerBranchId=null;
  if(user&&!isSuperAdmin){const {data,error}=await db.rpc("bmp_can_manage_settings");isManager=!error&&data===true;}
  if(isManager){const {data,error}=await db.rpc("bmp_get_my_erp_access");if(error||!data?.authorized||data.system_role!=="manager"||!data.branch_id){await db.auth.signOut();say($("loginStatus"),"Manager-এর সক্রিয় Employee Profile বা Branch পাওয়া যায়নি।",true);return;}managerBranchId=data.branch_id;isManagerUser=true;}
  if(isManager){const {data,error}=await db.rpc("bmp_get_my_erp_access");if(error||!data?.authorized||data.system_role!=="manager"||!data.branch_id){await db.auth.signOut();say($("loginStatus"),"Manager-এর সক্রিয় Employee Profile বা Branch পাওয়া যায়নি।",true);return;}managerBranchId=data.branch_id;isManagerUser=true;}
@@ -522,7 +522,7 @@ async function loadEmployees(){
  $("employeeRows").innerHTML='<tr><td colspan="8">তথ্য লোড হচ্ছে...</td></tr>';
  await loadInventoryBranches();let q=db.from("erp_employees").select("*,erp_branches(branch_name)").order("created_at",{ascending:false});
  const status=value("employeeStatusFilter");
- if(status!=="all")q=q.eq("employment_status",status);
+ if(status!=="all")q=q.eq("employment_status",status);if(isManagerUser&&managerBranchId)q=q.eq("branch_id",managerBranchId);
  const {data,error}=await q;
  if(error){$("employeeRows").innerHTML='<tr><td colspan="9">Employee list load হয়নি।</td></tr>';say($("employeeStatusText"),"Employee list load হয়নি: "+error.message,true);return;}
  employees=data||[];renderEmployees();
