@@ -101,7 +101,7 @@ async function verifyUser(user){
   }
   employeeAccess=access;
  }
- activeUser=user;$("loginPanel").hidden=true;$("workspace").hidden=false;$("logoutBtn").hidden=false;
+ activeUser=user;$("loginPanel").hidden=true;$("workspace").hidden=false;$("logoutBtn").hidden=false;$("newEmployeeBtn").hidden=isManager;
  document.querySelectorAll(".tab").forEach(tab=>{tab.hidden=false;});
  $("exportExcelBtn").hidden=false;$("exportPdfBtn").hidden=false;
  if(isManager){
@@ -509,7 +509,7 @@ function resetEmployeeForm(){
  $("employeeFormTitle").textContent="Add Employee";
 }
 function openEmployeeForm(row=null){
- resetEmployeeForm();$("employeeFormPanel").hidden=false;$("linkEmployeeAccountBtn").disabled=!row;say($("employeeLoginStatus"),"");
+ resetEmployeeForm();$("employeeForm").querySelectorAll("input,select,textarea").forEach(el=>el.disabled=false);$("linkEmployeeAccountBtn").hidden=false;$("employeeFormPanel").hidden=false;$("linkEmployeeAccountBtn").disabled=!row;say($("employeeLoginStatus"),"");
  if(row){
   $("employeeFormTitle").textContent="Edit Employee";$("employeeRecordId").value=row.id;$("employeeCode").value=row.employee_code;
   const map={employeeName:"full_name",employeeMobile:"mobile_number",employeeAltPhone:"alternative_phone",employeeEmail:"email",employeeJobTitle:"job_title",employeeSystemRole:"system_role",employeeDepartment:"department",employeeAddress:"address",employeeEmergencyName:"emergency_contact_name",employeeEmergencyPhone:"emergency_contact_phone",employeeJoiningDate:"joining_date",employeeEmploymentStatus:"employment_status",employeeNotes:"notes",employeeLoginEmail:"login_email",employeeDutyStart:"duty_start_time",employeeDutyEnd:"duty_end_time",employeeSalaryDeduction:"salary_deduction_enabled",employeeOvertime:"overtime_enabled",employeeLeaveDeduction:"leave_deduction_enabled",employeeUnusedLeaveBonus:"unused_leave_bonus_enabled",employeeMealBreakMinutes:"meal_break_minutes",employeeMonthlyLeaveDays:"monthly_leave_days",employeeSalaryDayDivisor:"salary_day_divisor",employeeOvertimeHourlyRate:"overtime_hourly_rate"};
@@ -866,7 +866,7 @@ $("payrollTab").onclick=async()=>{
  ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","employeeModule","attendanceModule"].forEach(id=>{const el=$(id);if(el)el.hidden=true;});
  $("customerModulePanel").hidden=true;$("customerFormPanel").hidden=true;$("permissionsModule").hidden=true;$("payrollModule").hidden=false;
  ["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","customerDueTab","salesReturnTab","purchaseReturnTab","employeesTab","attendanceTab","permissionsTab"].forEach(id=>$(id).classList.remove("active"));
- $("payrollTab").classList.add("active");await loadPayrollEmployees();await loadPayroll();if(!isManagerUser)await loadPaymentAccountOptions();else{$("payrollBranch").disabled=true;$("payrollPaymentStatus").value="pending";$("payrollPaymentStatus").querySelector('option[value="paid"]').hidden=true;$("payrollAccount").closest("label").hidden=true;$("payrollPaidDate").closest("label").hidden=true;$("payrollPaymentMethod").closest("label").hidden=true;}
+ $("payrollTab").classList.add("active");await loadPayrollEmployees();await loadPayroll();if(!isManagerUser){$("payrollBranch").disabled=false;$("payrollPaymentStatus").querySelector('option[value="paid"]').hidden=false;$("payrollAccount").closest("label").hidden=false;$("payrollPaidDate").closest("label").hidden=false;$("payrollPaymentMethod").closest("label").hidden=false;await loadPaymentAccountOptions();}else{$("payrollBranch").disabled=true;$("payrollPaymentStatus").value="pending";$("payrollPaymentStatus").querySelector('option[value="paid"]').hidden=true;$("payrollAccount").closest("label").hidden=true;$("payrollPaidDate").closest("label").hidden=true;$("payrollPaymentMethod").closest("label").hidden=true;}
 };
 ["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","customerDueTab","salesReturnTab","purchaseReturnTab","employeesTab","attendanceTab","permissionsTab"].forEach(id=>{const tab=$(id);if(tab)tab.addEventListener("click",()=>{$("payrollModule").hidden=true;});});
 $("payrollMonth").value=new Date().toISOString().slice(0,7);
