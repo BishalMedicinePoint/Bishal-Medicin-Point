@@ -1133,7 +1133,7 @@ document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="dashboardTab")t.addEven
 /* Supabase-backed settings, branch register, audit viewer, photo storage and data export */
 (()=>{
  const $=id=>document.getElementById(id);
- let client=null,ready=false,currentActorId=null;
+ let client=null,ready=false,currentActorId=null,isSuperAdmin=false;
  const adminId="7a3166f2-e4bb-42b8-a649-033dd2d02090";
  const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
  async function connect(){
@@ -1142,15 +1142,21 @@ document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="dashboardTab")t.addEven
    client=window.supabase.createClient(window.BMP_SUPABASE_URL,window.BMP_SUPABASE_ANON_KEY);
    const {data:{session}}=await client.auth.getSession();
    currentActorId=session?.user?.id||null;
+   isSuperAdmin=!!session&&currentActorId===adminId;
    if(!session){ready=false;return;}
-   if(currentActorId===adminId)ready=true;
+   if(isSuperAdmin)ready=true;
    else{const {data:canManage,error:roleError}=await client.rpc("bmp_can_manage_settings");ready=!roleError&&canManage===true;}
-   if(ready){await loadSettings("erp_shop_settings",["shopName","shopPhone","shopEmail","shopAddress"],{shop_name:"shopName",phone:"shopPhone",email:"shopEmail",address:"shopAddress"});await loadSettings("erp_invoice_settings",["invoiceTitle","invoicePrefix","invoicePaper","invoiceLogo","invoiceFooter"],{invoice_title:"invoiceTitle",invoice_prefix:"invoicePrefix",paper_size:"invoicePaper",show_logo:"invoiceLogo",footer_text:"invoiceFooter"});await renderBranches();await renderLog();}
+   if(ready){
+    await loadSettings("erp_shop_settings",["shopName","shopPhone","shopEmail","shopAddress","onlineWebsiteUrl","catalogueEnabled","cataloguePrices"],{shop_name:"shopName",phone:"shopPhone",email:"shopEmail",address:"shopAddress",website_url:"onlineWebsiteUrl",catalogue_enabled:"catalogueEnabled",show_catalogue_prices:"cataloguePrices"});
+    await loadSettings("erp_invoice_settings",["invoiceTitle","invoicePrefix","invoicePaper","invoiceLogo","invoiceFooter"],{invoice_title:"invoiceTitle",invoice_prefix:"invoicePrefix",paper_size:"invoicePaper",show_logo:"invoiceLogo",footer_text:"invoiceFooter"});
+    await renderBranches();
+    if(isSuperAdmin)await renderLog();
+   }
   }catch(e){console.warn("ERP cloud module connection:",e);}
  }
  async function loadSettings(table,ids,map){
   const {data,error}=await client.from(table).select("*").eq("id",true).maybeSingle();if(error||!data)return;
-  Object.entries(map).forEach(([col,id])=>{if(data[col]!==null&&data[col]!==undefined)$(id).value=col==="show_logo"?(data[col]?"yes":"no"):String(data[col]);});
+  Object.entries(map).forEach(([col,id])=>{if(data[col]!==null&&data[col]!==undefined)$(id).value=(["show_logo","catalogue_enabled","show_catalogue_prices"].includes(col))?(data[col]?"yes":"no"):String(data[col]);});
  }
  async function saveSettings(table,values,status,label){
   if(!ready){$(status).textContent="শুধু Super Admin বা অনুমোদিত Manager cloud settings পরিবর্তন করতে পারবেন।";return;}
@@ -1159,6 +1165,7 @@ document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="dashboardTab")t.addEven
  }
  $("shopSettingsForm").addEventListener("submit",e=>{e.preventDefault();saveSettings("erp_shop_settings",{shop_name:$("shopName").value.trim(),phone:$("shopPhone").value.trim(),email:$("shopEmail").value.trim(),address:$("shopAddress").value.trim()},"shopSettingsStatus","Shop settings");});
  $("invoiceSettingsForm").addEventListener("submit",e=>{e.preventDefault();saveSettings("erp_invoice_settings",{invoice_title:$("invoiceTitle").value.trim(),invoice_prefix:$("invoicePrefix").value.trim(),paper_size:$("invoicePaper").value,show_logo:$("invoiceLogo").value==="yes",footer_text:$("invoiceFooter").value.trim()},"invoiceSettingsStatus","Invoice settings");});
+ $("onlineWebsiteForm").addEventListener("submit",e=>{e.preventDefault();saveSettings("erp_shop_settings",{website_url:$("onlineWebsiteUrl").value.trim()||null,catalogue_enabled:$("catalogueEnabled").value==="yes",show_catalogue_prices:$("cataloguePrices").value==="yes"},"onlineWebsiteStatus","Online website settings");});
  async function renderBranches(){
   if(!ready)return;
   const {data,error}=await client.from("erp_branches").select("branch_code,branch_name,phone,address,is_active").order("created_at");
@@ -1172,13 +1179,13 @@ document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="dashboardTab")t.addEven
   $("branchStatus").textContent=error?"Branch save failed: "+error.message:"Branch Supabase-এ সংরক্ষিত হয়েছে।";if(!error){e.target.reset();await renderBranches();}
  });
  async function renderLog(){
-  if(!ready)return;
+  if(!ready||!isSuperAdmin)return;
   const {data,error}=await client.from("erp_activity_log").select("changed_at,table_name,operation,record_id,actor_id").order("changed_at",{ascending:false}).limit(200);
   if(error){$("activityLogRows").innerHTML='<tr><td colspan="2">'+esc(error.message)+'</td></tr>';return;}
   $("activityLogRows").innerHTML=data.length?data.map(x=>'<tr><td>'+esc(new Date(x.changed_at).toLocaleString())+'</td><td>'+esc(x.operation+" "+x.table_name+" "+(x.record_id||""))+'</td></tr>').join(""):'<tr><td colspan="2">No database activity yet.</td></tr>';
  }
  async function renderPhotoGallery(){
-  if(!ready){$("photoManagerStatus").textContent="অনুমোদিত Settings account ছাড়া private gallery দেখা যাবে না।";return;}
+  if(!ready||!isSuperAdmin){$("photoManagerStatus").textContent="অনুমোদিত Settings account ছাড়া private gallery দেখা যাবে না।";return;}
   $("photoManagerPreview").innerHTML="<p>ছবি লোড হচ্ছে...</p>";
   const {data,error}=await client.storage.from("erp-photos").list("uploads",{limit:100,sortBy:{column:"created_at",order:"desc"}});
   if(error){$("photoManagerPreview").textContent="Gallery load হয়নি: "+error.message;return;}
@@ -1198,7 +1205,7 @@ document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="dashboardTab")t.addEven
  }
  $("refreshPhotoGallery").onclick=renderPhotoGallery;
  $("photoManagerInput").addEventListener("change",async e=>{
-  if(!ready){$("photoManagerStatus").textContent="অনুমোদিত Settings account ছাড়া cloud upload করা যাবে না।";return;}
+  if(!ready||!isSuperAdmin){$("photoManagerStatus").textContent="শুধু Super Admin private photo gallery-তে upload করতে পারবেন।";return;}
   const files=[...(e.target.files||[])];let ok=0,failed=0;
   for(const file of files){
    if(!/^image\/(png|jpeg|webp)$/.test(file.type)||file.size>5*1024*1024){failed++;continue;}
@@ -1211,7 +1218,7 @@ document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="dashboardTab")t.addEven
   $("photoManagerStatus").textContent=ok+"টি ছবি upload হয়েছে; "+failed+"টি বাদ/ব্যর্থ। "+$("photoManagerStatus").textContent;
  });
  $("downloadLocalBackup").addEventListener("click",async()=>{
-  if(!ready){$("backupStatus").textContent="অনুমোদিত Settings account ছাড়া database export নেওয়া যাবে না।";return;}
+  if(!ready||!isSuperAdmin){$("backupStatus").textContent="শুধু Super Admin database backup export করতে পারবেন।";return;}
   const tables=["customers","customer_ledger","medicines","erp_medicines","erp_medicine_batches","erp_sales_invoices","erp_sales_invoice_items","erp_sales_returns","erp_sales_return_items","erp_purchase_invoices","erp_purchase_invoice_items","erp_purchase_returns","erp_purchase_return_items","erp_suppliers","erp_supplier_ledger","erp_supplier_payments","erp_customer_payments","erp_employees","erp_employee_permissions","erp_attendance","erp_attendance_settings","erp_employee_payroll","erp_accounts","erp_account_transactions","erp_stock_movements","erp_branches","erp_shop_settings","erp_invoice_settings","erp_online_order_notes","erp_activity_log"];
   const backup={product:"Bishal Medicine Point ERP data export",createdAt:new Date().toISOString(),formatVersion:2,tables:{},rowCounts:{},complete:true};
   for(const table of tables){
@@ -1230,14 +1237,14 @@ document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="dashboardTab")t.addEven
  // Cloud-backed manual online order request notes; not a public medicine checkout.
  $("onlineOrderForm").onsubmit=null;
  $("onlineOrderForm").addEventListener("submit",async e=>{
-  e.preventDefault();if(!ready){$("onlineOrderStatus").textContent="Admin Supabase session নেই; cloud save হয়নি।";return;}
+  e.preventDefault();if(!ready||!isSuperAdmin){$("onlineOrderStatus").textContent="শুধু Super Admin online order notes পরিচালনা করতে পারবেন।";return;}
   const row={customer_name:$("onlineCustomer").value.trim(),phone:$("onlinePhone").value.trim(),order_details:$("onlineDetails").value.trim(),created_by:adminId};
   const {error}=await client.from("erp_online_order_notes").insert(row);
   $("onlineOrderStatus").textContent=error?"Order note save failed: "+error.message:"Order note Supabase-এ সংরক্ষিত হয়েছে।";
   if(!error){e.target.reset();await renderOnlineOrders();}
  });
  async function renderOnlineOrders(){
-  if(!ready)return;
+  if(!ready||!isSuperAdmin)return;
   const {data,error}=await client.from("erp_online_order_notes").select("created_at,customer_name,phone,order_details,order_status").order("created_at",{ascending:false}).limit(500);
   if(error){$("onlineOrderRows").innerHTML='<tr><td colspan="5">'+esc(error.message)+'</td></tr>';return;}
   $("onlineOrderRows").innerHTML=data.length?data.map(x=>'<tr><td>'+esc(new Date(x.created_at).toLocaleDateString())+'</td><td>'+esc(x.customer_name)+'</td><td>'+esc(x.phone)+'</td><td>'+esc(x.order_details)+'</td><td>'+esc(x.order_status)+'</td></tr>').join(""):'<tr><td colspan="5">No order notes.</td></tr>';
@@ -1246,7 +1253,7 @@ document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="dashboardTab")t.addEven
  // Replace local-only submit handlers so the database result is authoritative.
  $("shopSettingsForm").onsubmit=null;$("invoiceSettingsForm").onsubmit=null;$("branchForm").onsubmit=null;
 
- $("clearLocalActivity").addEventListener("click",()=>{if(ready)renderLog();});
+ $("clearLocalActivity").addEventListener("click",()=>{if(ready&&isSuperAdmin)renderLog();});
  connect();
 })();
 
