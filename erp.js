@@ -94,7 +94,7 @@ async function verifyUser(user){
  if(user&&!isSuperAdmin){const {data,error}=await db.rpc("bmp_can_manage_settings");isManager=!error&&data===true;}
  if(!isSuperAdmin&&!isManager){
   const {data,error}=await db.rpc("bmp_get_my_erp_access");const access=data||{};
-  if(error||!access.authorized||!(access.permissions?.pos?.view===true||access.permissions?.purchases?.view===true)){
+  if(error||!access.authorized||!(access.permissions?.pos?.view===true||access.permissions?.purchases?.view===true||access.permissions?.stock?.view===true)){
    await db.auth.signOut();activeUser=null;employeeAccess=null;$("workspace").hidden=true;$("loginPanel").hidden=false;
    say($("loginStatus"),"এই অ্যাকাউন্টে POS বা Purchase View Permission নেই। Super Admin-এর কাছে প্রয়োজনীয় অনুমতি চাইুন।",true);return;
   }
@@ -116,14 +116,16 @@ async function verifyUser(user){
  }else{
   const canPos=employeeAccess.permissions?.pos?.view===true;
   const canPurchase=employeeAccess.permissions?.purchases?.view===true;
-  document.querySelectorAll(".tab").forEach(tab=>{tab.hidden=!(tab.id==="posTab"&&canPos)&&!(tab.id==="purchaseTab"&&canPurchase);});
+  const canStock=employeeAccess.permissions?.stock?.view===true;
+  document.querySelectorAll(".tab").forEach(tab=>{tab.hidden=!(tab.id==="posTab"&&canPos)&&!(tab.id==="purchaseTab"&&canPurchase)&&!(tab.id==="stockTab"&&canStock);});
   $("exportExcelBtn").hidden=true;$("exportPdfBtn").hidden=true;
   document.querySelector(".welcome .eyebrow").textContent="EMPLOYEE WORKSPACE";
-  document.querySelector(".welcome h1").textContent=canPos&&canPurchase?"POS & Purchase":canPos?"POS Sales":"Purchase Management";
+  const workspaces=[canPos?"POS":null,canPurchase?"Purchase":null,canStock?"Stock":null].filter(Boolean);
+  document.querySelector(".welcome h1").textContent=workspaces.join(" · ")+" Workspace";
   document.querySelector(".welcome p:not(.eyebrow)").textContent="শুধু আপনার নির্ধারিত Branch ও Permission অনুযায়ী কাজ করতে পারবেন";
   document.querySelector(".secure").textContent=(employeeAccess.full_name||"Employee")+" · Employee";
   ["dashboardModule","customerModulePanel","customerFormPanel","medicineModule","batchModule","barcodeModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","employeeModule","attendanceModule","permissionsModule","payrollModule","accountsModule","dueOverviewModule","profitLossModule","financialReportsModule","stockReportsModule","employeeReportsModule","suppliersModule","onlineWebsiteModule","onlineOrdersModule","backupModule","activityLogModule","photoManagementModule","fingerprintModule"].forEach(id=>{const el=$(id);if(el)el.hidden=true;});
-  if(canPos)$("posTab").click();else $("purchaseTab").click();
+  if(canPos)$("posTab").click();else if(canPurchase)$("purchaseTab").click();else $("stockTab").click();
  }
 }
 $("logoutBtn").onclick=async()=>{await db.auth.signOut();activeUser=null;$("workspace").hidden=true;$("loginPanel").hidden=false;$("logoutBtn").hidden=true;};
