@@ -68,7 +68,7 @@
     const v={};parts.forEach(p=>v[p.type]=p.value);return v.year+"-"+v.month+"-"+v.day;
   }
   async function loadTodayAttendance(employeeId){
-    const {data,error}=await client.from("erp_attendance").select("attendance_date,check_in,check_out").eq("employee_id",employeeId).eq("attendance_date",todayDhaka()).maybeSingle();
+    const {data,error}=await client.from("erp_attendance").select("attendance_date,attendance_status,check_in,check_out").eq("employee_id",employeeId).eq("attendance_date",todayDhaka()).maybeSingle();
     if(error){status("attendanceActionStatus","আজকের হাজিরা যাচাই হয়নি: "+error.message,true);return;}
     const checkedIn=!!data?.check_in;const checkedOut=!!data?.check_out;
     $("checkInBtn").disabled=checkedIn;$("checkInBtn").textContent=checkedIn?"Check In সম্পন্ন":"আজকের Check In";
