@@ -2,7 +2,7 @@
 const $ = id => document.getElementById(id);
 const ADMIN_UID = "7a3166f2-e4bb-42b8-a649-033dd2d02090";
 const ADMIN_EMAIL = "mdmeharajh9@gmail.com";
-let db = null, activeUser = null, customers = [], photoPath = null;
+let db = null, activeUser = null, customers = [], photoPath = null, employeeAccess = null;
 const say = (el, message, error=false) => { el.textContent=message; el.classList.toggle("error",error); };
 const value = id => $(id).value.trim();
 const money = n => Number(n || 0).toLocaleString("en-BD",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -90,34 +90,37 @@ $("loginForm").onsubmit=async e=>{
 };
 async function verifyUser(user){
  const isSuperAdmin=!!user&&user.id===ADMIN_UID&&String(user.email).toLowerCase()===ADMIN_EMAIL;
- let isManager=false;
- if(user&&!isSuperAdmin){
-  const {data,error}=await db.rpc("bmp_can_manage_settings");
-  isManager=!error&&data===true;
- }
+ let isManager=false;employeeAccess=null;
+ if(user&&!isSuperAdmin){const {data,error}=await db.rpc("bmp_can_manage_settings");isManager=!error&&data===true;}
  if(!isSuperAdmin&&!isManager){
-  await db.auth.signOut();activeUser=null;$("workspace").hidden=true;$("loginPanel").hidden=false;
-  say($("loginStatus"),"এই অ্যাকাউন্টটি Super Admin বা অনুমোদিত Manager হিসেবে সক্রিয় নয়।",true);return;
+  const {data,error}=await db.rpc("bmp_get_my_erp_access");const access=data||{};
+  if(error||!access.authorized||access.permissions?.pos?.view!==true){
+   await db.auth.signOut();activeUser=null;employeeAccess=null;$("workspace").hidden=true;$("loginPanel").hidden=false;
+   say($("loginStatus"),"এই অ্যাকাউন্টে POS দেখার অনুমতি নেই। Super Admin-এর কাছে POS View Permission চাইুন।",true);return;
+  }
+  employeeAccess=access;
  }
  activeUser=user;$("loginPanel").hidden=true;$("workspace").hidden=false;$("logoutBtn").hidden=false;
  document.querySelectorAll(".tab").forEach(tab=>{tab.hidden=false;});
  $("exportExcelBtn").hidden=false;$("exportPdfBtn").hidden=false;
  if(isManager){
-  const allowed=new Set(["shopSettingsTab","invoiceSettingsTab","branchesTab"]);
-  document.querySelectorAll(".tab").forEach(tab=>{tab.hidden=!allowed.has(tab.id);});
+  const allowed=new Set(["shopSettingsTab","invoiceSettingsTab","branchesTab"]);document.querySelectorAll(".tab").forEach(tab=>{tab.hidden=!allowed.has(tab.id);});
   $("exportExcelBtn").hidden=true;$("exportPdfBtn").hidden=true;
-  document.querySelector(".welcome .eyebrow").textContent="MANAGER SETTINGS ACCESS";
-  document.querySelector(".welcome h1").textContent="Settings Workspace";
-  document.querySelector(".welcome p:not(.eyebrow)").textContent="আপনার অনুমতি অনুযায়ী Shop, Invoice ও Branch Settings";
-  document.querySelector(".secure").textContent="Manager · Settings only";
+  document.querySelector(".welcome .eyebrow").textContent="MANAGER SETTINGS ACCESS";document.querySelector(".welcome h1").textContent="Settings Workspace";
+  document.querySelector(".welcome p:not(.eyebrow)").textContent="আপনার অনুমতি অনুযায়ী Shop, Invoice ও Branch Settings";document.querySelector(".secure").textContent="Manager · Settings only";
   ["dashboardModule","customerModulePanel","customerFormPanel","medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","employeeModule","attendanceModule","permissionsModule","payrollModule","accountsModule","dueOverviewModule","profitLossModule","financialReportsModule","stockReportsModule","employeeReportsModule","suppliersModule","onlineWebsiteModule","onlineOrdersModule","backupModule","activityLogModule","photoManagementModule","fingerprintModule"].forEach(id=>{const el=$(id);if(el)el.hidden=true;});
   $("shopSettingsTab").click();
+ }else if(isSuperAdmin){
+  document.querySelector(".welcome .eyebrow").textContent="MANAGEMENT WORKSPACE";document.querySelector(".welcome h1").textContent="Pharmacy ERP";
+  document.querySelector(".welcome p:not(.eyebrow)").textContent="প্রথম ধাপ: Customer Management";document.querySelector(".secure").textContent="Super Admin access";$("dashboardTab").click();
  }else{
-  document.querySelector(".welcome .eyebrow").textContent="MANAGEMENT WORKSPACE";
-  document.querySelector(".welcome h1").textContent="Pharmacy ERP";
-  document.querySelector(".welcome p:not(.eyebrow)").textContent="প্রথম ধাপ: Customer Management";
-  document.querySelector(".secure").textContent="Super Admin access";
-  $("dashboardTab").click();
+  document.querySelectorAll(".tab").forEach(tab=>{tab.hidden=tab.id!=="posTab";});
+  $("exportExcelBtn").hidden=true;$("exportPdfBtn").hidden=true;
+  document.querySelector(".welcome .eyebrow").textContent="EMPLOYEE POS ACCESS";document.querySelector(".welcome h1").textContent="POS Sales";
+  document.querySelector(".welcome p:not(.eyebrow)").textContent="শুধু আপনার নির্ধারিত Branch-এ বিক্রির অনুমতি";
+  document.querySelector(".secure").textContent=(employeeAccess.full_name||"Employee")+" · POS";
+  ["dashboardModule","customerModulePanel","customerFormPanel","medicineModule","batchModule","barcodeModule","purchaseModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","employeeModule","attendanceModule","permissionsModule","payrollModule","accountsModule","dueOverviewModule","profitLossModule","financialReportsModule","stockReportsModule","employeeReportsModule","suppliersModule","onlineWebsiteModule","onlineOrdersModule","backupModule","activityLogModule","photoManagementModule","fingerprintModule"].forEach(id=>{const el=$(id);if(el)el.hidden=true;});
+  $("posTab").click();
  }
 }
 $("logoutBtn").onclick=async()=>{await db.auth.signOut();activeUser=null;$("workspace").hidden=true;$("loginPanel").hidden=false;$("logoutBtn").hidden=true;};
@@ -284,8 +287,10 @@ let posCart=[],posBatches=[];
 const pMoney=n=>Number(n||0).toFixed(2);
 function pRender(){const body=$("posCartRows");body.innerHTML=posCart.length?posCart.map((x,i)=>'<tr><td>'+safe(x.name)+'<br><small>'+safe(x.batch)+'</small></td><td>'+x.qty+'</td><td>'+pMoney(x.price)+'</td><td>'+pMoney(x.qty*x.price)+'</td><td><button class="btn muted" data-r="'+i+'">Remove</button></td></tr>').join(""):'<tr><td colspan="5">Cart খালি।</td></tr>';body.querySelectorAll("[data-r]").forEach(b=>b.onclick=()=>{posCart.splice(+b.dataset.r,1);pRender();});const sub=posCart.reduce((s,x)=>s+x.qty*x.price,0),disc=Number(value("posDiscount")||0);$("posSubtotal").textContent=pMoney(sub);$("posTotal").textContent=pMoney(Math.max(0,sub-disc));if(!$("posPaid").dataset.touched)$("posPaid").value=pMoney(Math.max(0,sub-disc));}
 async function loadPosBranches(selected=""){
- const {data,error}=await db.from("erp_branches").select("id,branch_name,branch_code").eq("is_active",true).order("created_at");
  const el=$("posBranch");if(!el)return;
+ if(employeeAccess){const branch=employeeAccess.branch_id;if(!branch){el.innerHTML='<option value="">Employee-এর Branch সেট করা নেই</option>';say($("posStatus"),"আপনার Employee Profile-এ Branch নির্ধারণ করুন।",true);return;}el.innerHTML='<option value="'+safe(branch)+'">আমার নির্ধারিত Branch</option>';el.value=branch;el.disabled=true;return;}
+ el.disabled=false;
+ const {data,error}=await db.from("erp_branches").select("id,branch_name,branch_code").eq("is_active",true).order("created_at");
  if(error){el.innerHTML='<option value="">Branch load হয়নি</option>';say($("posStatus"),"Branch list: "+error.message,true);return;}
  el.innerHTML='<option value="">Sales Branch নির্বাচন করুন</option>'+(data||[]).map(b=>'<option value="'+safe(b.id)+'">'+safe(b.branch_name)+' · '+safe(b.branch_code)+'</option>').join("");
  if(selected&&data.some(b=>b.id===selected))el.value=selected;
@@ -298,10 +303,10 @@ $("posBatchSelect").onchange=()=>{const b=posBatches.find(x=>x.id===value("posBa
 $("addPosItemBtn").onclick=()=>{const b=posBatches.find(x=>x.id===value("posBatchSelect")),qty=Number(value("posQuantity")),price=Number(value("posUnitPrice"));if(!b||!Number.isInteger(qty)||qty<1||qty>b.quantity_available||price<0||!Number.isFinite(price)){say($("posProductStatus"),"Batch, Quantity ও Price সঠিক দিন।",true);return;}const x=posCart.find(x=>x.batch_id===b.id);if(x){if(x.qty+qty>b.quantity_available){say($("posProductStatus"),"Stock যথেষ্ট নেই।",true);return;}x.qty+=qty;}else posCart.push({batch_id:b.id,name:b.m.medicine_name,batch:b.batch_number,qty,price});pRender();};
 $("posDiscount").oninput=pRender;$("posPaid").oninput=()=>{$("posPaid").dataset.touched="1";};
 async function pCustomers(){const {data,error}=await db.from("customers").select("id,customer_name,mobile_number").eq("is_active",true).order("customer_name");if(error)return;$("posCustomer").innerHTML='<option value="">Walk-in Customer</option>'+(data||[]).map(c=>'<option value="'+c.id+'">'+safe(c.customer_name)+' · '+safe(c.mobile_number)+'</option>').join("");}
-async function pInvoices(){const {data,error}=await db.from("erp_sales_invoices").select("invoice_number,sale_date,total,paid,due,customers(customer_name)").order("created_at",{ascending:false}).limit(20);if(error)return;$("posInvoiceRows").innerHTML=(data||[]).map(x=>'<tr><td>'+safe(x.invoice_number)+'</td><td>'+new Date(x.sale_date).toLocaleString("en-BD")+'</td><td>'+safe(x.customers?.customer_name||"Walk-in")+'</td><td>'+pMoney(x.total)+'</td><td>'+pMoney(x.paid)+'</td><td>'+pMoney(x.due)+'</td></tr>').join("")||'<tr><td colspan="6">Invoice নেই।</td></tr>';}
-$("completeSaleBtn").onclick=async()=>{const sub=posCart.reduce((s,x)=>s+x.qty*x.price,0),disc=Number(value("posDiscount")||0),paid=Number(value("posPaid")||0),total=sub-disc;if(!activeUser||activeUser.id!==ADMIN_UID||!value("posBranch")||!posCart.length||disc<0||disc>sub||paid<0||paid>total||(paid>0&&!value("posPaymentAccount"))||(total>paid&&!value("posCustomer"))){say($("posStatus"),"Cart, Discount, Paid Amount ও Credit Customer পরীক্ষা করুন।",true);return;}if(!confirm("৳ "+pMoney(total)+" বিক্রি সম্পন্ন করবেন?"))return;$("completeSaleBtn").disabled=true;const {data,error}=await db.rpc("bmp_create_sale",{p_customer_id:value("posCustomer")||null,p_discount:disc,p_paid:paid,p_payment_method:value("posPaymentMethod"),p_payment_reference:value("posPaymentReference"),p_notes:value("posNotes"),p_items:posCart.map(x=>({batch_id:x.batch_id,quantity:x.qty,unit_price:x.price})),p_branch_id:value("posBranch"),p_account_id:paid>0?value("posPaymentAccount"):null});$("completeSaleBtn").disabled=false;if(error){say($("posStatus"),"বিক্রি হয়নি; Stock অপরিবর্তিত। "+error.message,true);return;} $("posReceiptMeta").textContent=data.invoice_number;const shopName=$("shopName")?.value.trim()||"Bishal Medicine Point",shopPhone=$("shopPhone")?.value.trim()||"01816367262",shopEmail=$("shopEmail")?.value.trim()||"bishalmedicinepoint@gmail.com",shopAddress=$("shopAddress")?.value.trim()||"Hospital Road, Maijdee, Noakhali",invoiceTitle=$("invoiceTitle")?.value.trim()||"Sales Invoice",invoiceFooter=$("invoiceFooter")?.value.trim();$("posReceiptContent").innerHTML='<header class="bmp-invoice-head"><h2>'+safe(shopName)+'</h2><p>'+safe(shopAddress)+'</p><p>'+safe(shopPhone)+(shopEmail?" · "+safe(shopEmail):"")+'</p></header><h3>'+safe(invoiceTitle)+' · '+safe(data.invoice_number)+'</h3><table class="bmp-invoice-lines"><thead><tr><th>Medicine</th><th>Qty</th><th>Unit Price</th><th>Amount</th></tr></thead><tbody>'+posCart.map(x=>'<tr><td>'+safe(x.name)+'</td><td>'+x.qty+'</td><td>৳ '+pMoney(x.price)+'</td><td>৳ '+pMoney(x.qty*x.price)+'</td></tr>').join("")+'</tbody></table><div class="bmp-invoice-totals"><p>Subtotal: ৳ '+pMoney(data.subtotal)+'</p><p>Discount: ৳ '+pMoney(data.discount)+'</p><p><b>Total: ৳ '+pMoney(data.total)+'</b></p><p>Paid: ৳ '+pMoney(data.paid)+'</p><p>Due: ৳ '+pMoney(data.due)+'</p></div>'+(invoiceFooter?'<footer class="bmp-invoice-footer">'+safe(invoiceFooter)+'</footer>':"");$("posReceiptPanel").hidden=false;posCart=[];$("posDiscount").value=0;$("posPaid").dataset.touched="";pRender();say($("posStatus"),"বিক্রি সফল: "+data.invoice_number);await pInvoices();await pSearch();};
+async function pInvoices(){let q=db.from("erp_sales_invoices").select("invoice_number,sale_date,total,paid,due,customers(customer_name)").order("created_at",{ascending:false}).limit(20);if(employeeAccess)q=q.eq("branch_id",employeeAccess.branch_id);const {data,error}=await q;if(error)return;$("posInvoiceRows").innerHTML=(data||[]).map(x=>'<tr><td>'+safe(x.invoice_number)+'</td><td>'+new Date(x.sale_date).toLocaleString("en-BD")+'</td><td>'+safe(x.customers?.customer_name||"Walk-in")+'</td><td>'+pMoney(x.total)+'</td><td>'+pMoney(x.paid)+'</td><td>'+pMoney(x.due)+'</td></tr>').join("")||'<tr><td colspan="6">Invoice নেই।</td></tr>';}
+$("completeSaleBtn").onclick=async()=>{const sub=posCart.reduce((s,x)=>s+x.qty*x.price,0),disc=Number(value("posDiscount")||0),paid=Number(value("posPaid")||0),total=sub-disc;if(!activeUser||(!employeeAccess&&activeUser.id!==ADMIN_UID)||(employeeAccess&&employeeAccess.permissions?.pos?.create!==true)||!value("posBranch")||!posCart.length||disc<0||disc>sub||paid<0||paid>total||(paid>0&&!value("posPaymentAccount"))||(total>paid&&!value("posCustomer"))){say($("posStatus"),"Cart, Discount, Paid Amount ও Credit Customer পরীক্ষা করুন।",true);return;}if(!confirm("৳ "+pMoney(total)+" বিক্রি সম্পন্ন করবেন?"))return;$("completeSaleBtn").disabled=true;const {data,error}=await db.rpc("bmp_create_sale",{p_customer_id:value("posCustomer")||null,p_discount:disc,p_paid:paid,p_payment_method:value("posPaymentMethod"),p_payment_reference:value("posPaymentReference"),p_notes:value("posNotes"),p_items:posCart.map(x=>({batch_id:x.batch_id,quantity:x.qty,unit_price:x.price})),p_branch_id:value("posBranch"),p_account_id:paid>0?value("posPaymentAccount"):null});$("completeSaleBtn").disabled=false;if(error){say($("posStatus"),"বিক্রি হয়নি; Stock অপরিবর্তিত। "+error.message,true);return;} $("posReceiptMeta").textContent=data.invoice_number;const shopName=$("shopName")?.value.trim()||"Bishal Medicine Point",shopPhone=$("shopPhone")?.value.trim()||"01816367262",shopEmail=$("shopEmail")?.value.trim()||"bishalmedicinepoint@gmail.com",shopAddress=$("shopAddress")?.value.trim()||"Hospital Road, Maijdee, Noakhali",invoiceTitle=$("invoiceTitle")?.value.trim()||"Sales Invoice",invoiceFooter=$("invoiceFooter")?.value.trim();$("posReceiptContent").innerHTML='<header class="bmp-invoice-head"><h2>'+safe(shopName)+'</h2><p>'+safe(shopAddress)+'</p><p>'+safe(shopPhone)+(shopEmail?" · "+safe(shopEmail):"")+'</p></header><h3>'+safe(invoiceTitle)+' · '+safe(data.invoice_number)+'</h3><table class="bmp-invoice-lines"><thead><tr><th>Medicine</th><th>Qty</th><th>Unit Price</th><th>Amount</th></tr></thead><tbody>'+posCart.map(x=>'<tr><td>'+safe(x.name)+'</td><td>'+x.qty+'</td><td>৳ '+pMoney(x.price)+'</td><td>৳ '+pMoney(x.qty*x.price)+'</td></tr>').join("")+'</tbody></table><div class="bmp-invoice-totals"><p>Subtotal: ৳ '+pMoney(data.subtotal)+'</p><p>Discount: ৳ '+pMoney(data.discount)+'</p><p><b>Total: ৳ '+pMoney(data.total)+'</b></p><p>Paid: ৳ '+pMoney(data.paid)+'</p><p>Due: ৳ '+pMoney(data.due)+'</p></div>'+(invoiceFooter?'<footer class="bmp-invoice-footer">'+safe(invoiceFooter)+'</footer>':"");$("posReceiptPanel").hidden=false;posCart=[];$("posDiscount").value=0;$("posPaid").dataset.touched="";pRender();say($("posStatus"),"বিক্রি সফল: "+data.invoice_number);await pInvoices();await pSearch();};
 $("printPosReceiptBtn").onclick=()=>{const paper=$("invoicePaper")?.value||"80mm";let style=document.getElementById("bmpInvoicePageStyle");if(!style){style=document.createElement("style");style.id="bmpInvoicePageStyle";document.head.appendChild(style);}style.textContent="@media print{@page{size:"+({A4:"A4",A5:"A5","80mm":"80mm auto","58mm":"58mm auto"}[paper]||"80mm auto")+";margin:8mm}#posReceiptPanel{width:100%;max-width:"+(paper==="A4"?"190mm":paper==="A5"?"140mm":paper==="58mm"?"58mm":"80mm")+"!important}}";document.body.classList.add("bmp-receipt-print");window.print();setTimeout(()=>document.body.classList.remove("bmp-receipt-print"),300);};$("refreshPosBtn").onclick=async()=>{await pCustomers();await pInvoices();await loadPaymentAccountOptions();};$("clearPosBtn").onclick=()=>{posCart=[];pRender();};
-$("posTab").onclick=async()=>{$("medicineModule").hidden=true;$("batchModule").hidden=true;$("barcodeModule").hidden=true;$("purchaseModule").hidden=true;$("posModule").hidden=false;$("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;["customersTab","medicinesTab","batchesTab","barcodeTab"].forEach(id=>$(id).classList.remove("active"));$("posTab").classList.add("active");await pCustomers();await pInvoices();await loadPosBranches(value("posBranch"));};
+$("posTab").onclick=async()=>{$("medicineModule").hidden=true;$("batchModule").hidden=true;$("barcodeModule").hidden=true;$("purchaseModule").hidden=true;$("posModule").hidden=false;$("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;["customersTab","medicinesTab","batchesTab","barcodeTab"].forEach(id=>$(id).classList.remove("active"));$("posTab").classList.add("active");if(employeeAccess){const p=employeeAccess.permissions||{};if(p.pos?.create!==true){$("completeSaleBtn").disabled=true;say($("posStatus"),"আপনার POS View আছে, কিন্তু Sale Create Permission নেই।",true);}if(p.medicines?.view!==true||p.batches?.view!==true){$("addPosItemBtn").disabled=true;say($("posProductStatus"),"Medicine ও Batch দেখতে medicines.view এবং batches.view Permission প্রয়োজন।",true);}if(p.customers?.view===true)await pCustomers();else{$("posCustomer").innerHTML='<option value="">Customer View Permission প্রয়োজন</option>';say($("posStatus"),"বিক্রির জন্য Customers → View Permission প্রয়োজন।",true);}if(p.accounts?.view===true)await loadPaymentAccountOptions();else{$("posPaymentAccount").innerHTML='<option value="">Accounts View Permission প্রয়োজন</option>';}}else{await pCustomers();await loadPaymentAccountOptions();}await pInvoices();await loadPosBranches(value("posBranch"));};
 
 
 let purchaseCart=[],purchaseMedicines=[];
