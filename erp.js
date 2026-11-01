@@ -1136,26 +1136,30 @@ document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="dashboardTab")t.addEven
  let client=null,ready=false,currentActorId=null,isSuperAdmin=false;
  const adminId="7a3166f2-e4bb-42b8-a649-033dd2d02090";
  const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+ async function applySession(session){
+  currentActorId=session?.user?.id||null;
+  isSuperAdmin=!!session&&currentActorId===adminId;
+  if(!session){ready=false;return;}
+  if(isSuperAdmin)ready=true;
+  else{const {data:canManage,error:roleError}=await client.rpc("bmp_can_manage_settings");ready=!roleError&&canManage===true;}
+  if(ready){
+   await loadSettings("erp_shop_settings",["shopName","shopPhone","shopEmail","shopAddress","onlineWebsiteUrl","catalogueEnabled","cataloguePrices"],{shop_name:"shopName",phone:"shopPhone",email:"shopEmail",address:"shopAddress",website_url:"onlineWebsiteUrl",catalogue_enabled:"catalogueEnabled",show_catalogue_prices:"cataloguePrices"});
+   await loadSettings("erp_invoice_settings",["invoiceTitle","invoicePrefix","invoicePaper","invoiceLogo","invoiceFooter"],{invoice_title:"invoiceTitle",invoice_prefix:"invoicePrefix",paper_size:"invoicePaper",show_logo:"invoiceLogo",footer_text:"invoiceFooter"});
+   await renderBranches();
+   if(isSuperAdmin)await renderLog();
+  }
+ }
  async function connect(){
   try{
    if(!window.supabase?.createClient||!window.BMP_SUPABASE_URL||!window.BMP_SUPABASE_ANON_KEY)return;
-   client=window.supabase.createClient(window.BMP_SUPABASE_URL,window.BMP_SUPABASE_ANON_KEY);
-   client.auth.onAuthStateChange((_event,session)=>{
-    if(session){void connect();}
-    else{ready=false;isSuperAdmin=false;currentActorId=null;}
-   });
-   const {data:{session}}=await client.auth.getSession();
-   currentActorId=session?.user?.id||null;
-   isSuperAdmin=!!session&&currentActorId===adminId;
-   if(!session){ready=false;return;}
-   if(isSuperAdmin)ready=true;
-   else{const {data:canManage,error:roleError}=await client.rpc("bmp_can_manage_settings");ready=!roleError&&canManage===true;}
-   if(ready){
-    await loadSettings("erp_shop_settings",["shopName","shopPhone","shopEmail","shopAddress","onlineWebsiteUrl","catalogueEnabled","cataloguePrices"],{shop_name:"shopName",phone:"shopPhone",email:"shopEmail",address:"shopAddress",website_url:"onlineWebsiteUrl",catalogue_enabled:"catalogueEnabled",show_catalogue_prices:"cataloguePrices"});
-    await loadSettings("erp_invoice_settings",["invoiceTitle","invoicePrefix","invoicePaper","invoiceLogo","invoiceFooter"],{invoice_title:"invoiceTitle",invoice_prefix:"invoicePrefix",paper_size:"invoicePaper",show_logo:"invoiceLogo",footer_text:"invoiceFooter"});
-    await renderBranches();
-    if(isSuperAdmin)await renderLog();
+   if(!client){
+    client=window.supabase.createClient(window.BMP_SUPABASE_URL,window.BMP_SUPABASE_ANON_KEY);
+    client.auth.onAuthStateChange((_event,session)=>{
+     Promise.resolve().then(()=>applySession(session)).catch(e=>console.warn("ERP settings session update:",e));
+    });
    }
+   const {data:{session}}=await client.auth.getSession();
+   await applySession(session);
   }catch(e){console.warn("ERP cloud module connection:",e);}
  }
  async function loadSettings(table,ids,map){
