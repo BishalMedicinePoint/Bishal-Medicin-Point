@@ -94,9 +94,9 @@ async function verifyUser(user){
  if(user&&!isSuperAdmin){const {data,error}=await db.rpc("bmp_can_manage_settings");isManager=!error&&data===true;}
  if(!isSuperAdmin&&!isManager){
   const {data,error}=await db.rpc("bmp_get_my_erp_access");const access=data||{};
-  if(error||!access.authorized||!(access.permissions?.pos?.view===true||access.permissions?.purchases?.view===true||access.permissions?.stock?.view===true||access.permissions?.sales_returns?.view===true||access.permissions?.purchase_returns?.view===true)){
+  if(error||!access.authorized||!(access.permissions?.pos?.view===true||access.permissions?.purchases?.view===true||access.permissions?.stock?.view===true||access.permissions?.sales_returns?.view===true||access.permissions?.purchase_returns?.view===true||access.permissions?.customer_due?.view===true)){
    await db.auth.signOut();activeUser=null;employeeAccess=null;$("workspace").hidden=true;$("loginPanel").hidden=false;
-   say($("loginStatus"),"এই অ্যাকাউন্টে POS বা Purchase View Permission নেই। Super Admin-এর কাছে প্রয়োজনীয় অনুমতি চাইুন।",true);return;
+   say($("loginStatus"),"এই অ্যাকাউন্টে অনুমোদিত কোনো Employee Workspace View Permission নেই। Super Admin-এর কাছে প্রয়োজনীয় অনুমতি চাইুন।",true);return;
   }
   employeeAccess=access;
  }
@@ -119,15 +119,16 @@ async function verifyUser(user){
   const canStock=employeeAccess.permissions?.stock?.view===true;
   const canSalesReturn=employeeAccess.permissions?.sales_returns?.view===true;
   const canPurchaseReturn=employeeAccess.permissions?.purchase_returns?.view===true;
-  document.querySelectorAll(".tab").forEach(tab=>{tab.hidden=!(tab.id==="posTab"&&canPos)&&!(tab.id==="purchaseTab"&&canPurchase)&&!(tab.id==="stockTab"&&canStock)&&!(tab.id==="salesReturnTab"&&canSalesReturn)&&!(tab.id==="purchaseReturnTab"&&canPurchaseReturn);});
+  const canCustomerDue=employeeAccess.permissions?.customer_due?.view===true;
+  document.querySelectorAll(".tab").forEach(tab=>{tab.hidden=!(tab.id==="posTab"&&canPos)&&!(tab.id==="purchaseTab"&&canPurchase)&&!(tab.id==="stockTab"&&canStock)&&!(tab.id==="salesReturnTab"&&canSalesReturn)&&!(tab.id==="purchaseReturnTab"&&canPurchaseReturn)&&!(tab.id==="customerDueTab"&&canCustomerDue);});
   $("exportExcelBtn").hidden=true;$("exportPdfBtn").hidden=true;
   document.querySelector(".welcome .eyebrow").textContent="EMPLOYEE WORKSPACE";
-  const workspaces=[canPos?"POS":null,canPurchase?"Purchase":null,canStock?"Stock":null,canSalesReturn?"Sales Return":null,canPurchaseReturn?"Purchase Return":null].filter(Boolean);
+  const workspaces=[canPos?"POS":null,canPurchase?"Purchase":null,canStock?"Stock":null,canSalesReturn?"Sales Return":null,canPurchaseReturn?"Purchase Return":null,canCustomerDue?"Customer Due":null].filter(Boolean);
   document.querySelector(".welcome h1").textContent=workspaces.join(" · ")+" Workspace";
   document.querySelector(".welcome p:not(.eyebrow)").textContent="শুধু আপনার নির্ধারিত Branch ও Permission অনুযায়ী কাজ করতে পারবেন";
   document.querySelector(".secure").textContent=(employeeAccess.full_name||"Employee")+" · Employee";
   ["dashboardModule","customerModulePanel","customerFormPanel","medicineModule","batchModule","barcodeModule","stockModule","customerDueModule","salesReturnModule","purchaseReturnModule","employeeModule","attendanceModule","permissionsModule","payrollModule","accountsModule","dueOverviewModule","profitLossModule","financialReportsModule","stockReportsModule","employeeReportsModule","suppliersModule","onlineWebsiteModule","onlineOrdersModule","backupModule","activityLogModule","photoManagementModule","fingerprintModule"].forEach(id=>{const el=$(id);if(el)el.hidden=true;});
-  if(canPos)$("posTab").click();else if(canPurchase)$("purchaseTab").click();else if(canStock)$("stockTab").click();else if(canSalesReturn)$("salesReturnTab").click();else $("purchaseReturnTab").click();
+  if(canPos)$("posTab").click();else if(canPurchase)$("purchaseTab").click();else if(canStock)$("stockTab").click();else if(canSalesReturn)$("salesReturnTab").click();else if(canPurchaseReturn)$("purchaseReturnTab").click();else $("customerDueTab").click();
  }
 }
 $("logoutBtn").onclick=async()=>{await db.auth.signOut();activeUser=null;$("workspace").hidden=true;$("loginPanel").hidden=false;$("logoutBtn").hidden=true;};
@@ -401,7 +402,15 @@ async function loadPaymentAccountOptions(){
  ["customerPaymentAccount","supplierPaymentAccount","posPaymentAccount","purchasePaymentAccount","salesReturnAccount","payrollAccount","purchaseReturnRefundAccount"].forEach(id=>{const el=$(id);if(el){const old=el.value;el.innerHTML=options;el.value=old;}});
 }
 async function loadCustomerDue(){
- await loadInventoryBranches();const branch=value("customerDueBranch");if(!branch){say($("customerPaymentStatus"),"Customer Due দেখার জন্য Branch নির্বাচন করুন।");return;}
+ await loadInventoryBranches();
+ const isEmployee=!!employeeAccess;
+ if(isEmployee){$("customerDueBranch").value=employeeAccess.branch_id||"";$("customerDueBranch").disabled=true;}else{$("customerDueBranch").disabled=false;}
+ const branch=value("customerDueBranch");if(!branch){say($("customerPaymentStatus"),"Customer Due দেখার জন্য Branch নির্বাচন করুন।");return;}
+ const canViewAccounts=!isEmployee||(employeeAccess.permissions?.accounts?.view===true);
+ const canCollect=!isEmployee||(employeeAccess.permissions?.customer_due?.create===true&&employeeAccess.permissions?.accounts?.view===true&&employeeAccess.permissions?.accounts?.create===true);
+ $("customerPaymentAccount").closest("label").hidden=!canViewAccounts;
+ $("recordCustomerPaymentBtn").disabled=!canCollect;
+ if(!canCollect)say($("customerPaymentStatus"),"Payment Collect করতে Customer Due Create এবং Accounts View + Create Permission প্রয়োজন।");
  const [inv,pay]=await Promise.all([
   db.from("erp_sales_invoices").select("id,invoice_number,sale_date,total,paid,due,customers(customer_name,mobile_number)").eq("branch_id",branch).gt("due",0).not("customer_id","is",null).order("sale_date",{ascending:false}).limit(500),
   db.from("erp_customer_payments").select("created_at,amount,payment_method,reference_number,erp_sales_invoices!inner(invoice_number,branch_id),customers(customer_name)").eq("erp_sales_invoices.branch_id",branch).order("created_at",{ascending:false}).limit(50)
@@ -415,11 +424,13 @@ async function loadCustomerDue(){
  if(pay.error){$("customerPaymentRows").innerHTML='<tr><td colspan="6">Payment history load হয়নি: '+safe(pay.error.message)+'</td></tr>';return;}
  $("customerPaymentRows").innerHTML=pay.data?.length?pay.data.map(x=>'<tr><td>'+new Date(x.created_at).toLocaleString("en-BD")+'</td><td>'+safe(x.customers?.customer_name||"")+'</td><td>'+safe(x.erp_sales_invoices?.invoice_number||"")+'</td><td>৳ '+purMoney(x.amount)+'</td><td>'+safe(x.payment_method)+'</td><td>'+safe(x.reference_number||"")+'</td></tr>').join(""):'<tr><td colspan="6">এখনো Customer Due Payment নেই।</td></tr>';
  $("customerSelectedDue").textContent="0.00";
+ if(canViewAccounts)await loadPaymentAccountOptions();
 }
 $("customerDueInvoice").onchange=()=>{const o=$("customerDueInvoice").selectedOptions[0];$("customerSelectedDue").textContent=purMoney(o?.dataset.due||0);$("customerPaymentAmount").max=o?.dataset.due||"";};
 $("recordCustomerPaymentBtn").onclick=async()=>{
  const invoice=value("customerDueInvoice"),amount=Number(value("customerPaymentAmount")),due=Number($("customerDueInvoice").selectedOptions[0]?.dataset.due||0);
- if(!activeUser||activeUser.id!==ADMIN_UID||!invoice||!Number.isFinite(amount)||amount<=0||amount>due){say($("customerPaymentStatus"),"বকেয়া Invoice নির্বাচন করুন এবং Due-এর বেশি নয় এমন Amount দিন।",true);return;}
+ const canCollect=!employeeAccess||(employeeAccess.permissions?.customer_due?.create===true&&employeeAccess.permissions?.accounts?.view===true&&employeeAccess.permissions?.accounts?.create===true);
+ if(!activeUser||!canCollect||!invoice||!Number.isFinite(amount)||amount<=0||amount>due||!value("customerPaymentAccount")){say($("customerPaymentStatus"),"প্রয়োজনীয় Permission, Account ও Due-এর মধ্যে সঠিক Amount নিশ্চিত করুন।",true);return;}
  if(!confirm("৳ "+purMoney(amount)+" Customer Due Payment সংরক্ষণ করবেন?"))return;
  $("recordCustomerPaymentBtn").disabled=true;say($("customerPaymentStatus"),"Payment সংরক্ষণ হচ্ছে...");
  const {data,error}=await db.rpc("bmp_record_customer_payment",{p_invoice_id:invoice,p_amount:amount,p_payment_method:value("customerPaymentMethod"),p_reference:value("customerPaymentReference"),p_note:value("customerPaymentNote"),p_account_id:value("customerPaymentAccount") });
@@ -433,7 +444,7 @@ $("refreshCustomerDueBtn").onclick=loadCustomerDue;$("customerDueBranch").onchan
 $("customerDueTab").onclick=async()=>{
  ["medicineModule","batchModule","barcodeModule","posModule","purchaseModule","stockModule","salesReturnModule","employeeModule"].forEach(id=>$(id).hidden=true);
  $("customerDueModule").hidden=false;$("newCustomerBtn").closest(".panel").hidden=true;$("customerFormPanel").hidden=true;
- ["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","salesReturnTab"].forEach(id=>$(id).classList.remove("active"));
+ ["customersTab","medicinesTab","batchesTab","barcodeTab","posTab","purchaseTab","stockTab","salesReturnTab","purchaseReturnTab"].forEach(id=>$(id).classList.remove("active"));
  $("customerDueTab").classList.add("active");await loadCustomerDue();
 };
 
