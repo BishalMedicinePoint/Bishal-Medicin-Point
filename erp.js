@@ -1140,6 +1140,10 @@ document.querySelectorAll(".tab").forEach(t=>{if(t.id!=="dashboardTab")t.addEven
   try{
    if(!window.supabase?.createClient||!window.BMP_SUPABASE_URL||!window.BMP_SUPABASE_ANON_KEY)return;
    client=window.supabase.createClient(window.BMP_SUPABASE_URL,window.BMP_SUPABASE_ANON_KEY);
+   client.auth.onAuthStateChange((_event,session)=>{
+    if(session){void connect();}
+    else{ready=false;isSuperAdmin=false;currentActorId=null;}
+   });
    const {data:{session}}=await client.auth.getSession();
    currentActorId=session?.user?.id||null;
    isSuperAdmin=!!session&&currentActorId===adminId;
